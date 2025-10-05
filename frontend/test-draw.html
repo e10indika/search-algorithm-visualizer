@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Draw Function</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .section {
+            margin: 20px 0;
+        }
+        .viz-row {
+            display: flex;
+            gap: 20px;
+        }
+        .viz-col {
+            flex: 1;
+            border: 2px solid #ddd;
+            padding: 10px;
+            min-height: 400px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        h2 {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Draw Function Test</h1>
+
+        <div class="section">
+            <button id="testBtn">Test Draw Graph & Tree</button>
+        </div>
+
+        <div class="section">
+            <div class="viz-row">
+                <div class="viz-col">
+                    <h2>Graph</h2>
+                    <div id="graph-container"></div>
+                </div>
+                <div class="viz-col">
+                    <h2>State Space Tree</h2>
+                    <div id="state-space-tree-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GraphBuilder } from './js/graph-builder.js';
+        import { TreeVisualizer } from './js/tree-visualizer.js';
+
+        const testData = {
+            graph: {
+                'A': ['B', 'C'],
+                'B': ['A', 'D', 'E'],
+                'C': ['A', 'F'],
+                'D': ['B'],
+                'E': ['B', 'F'],
+                'F': ['C', 'E']
+            },
+            weights: {
+                'A-B': 1,
+                'A-C': 4,
+                'B-D': 2,
+                'B-E': 5,
+                'C-F': 3,
+                'E-F': 1
+            },
+            start: 'A',
+            goal: 'F'
+        };
+
+        document.getElementById('testBtn').addEventListener('click', () => {
+            console.log('Testing draw function...');
+
+            // Draw graph
+            const graphContainer = document.getElementById('graph-container');
+            const graphBuilder = new GraphBuilder(graphContainer);
+            graphBuilder.buildGraph(testData, 'A', ['F']);
+
+            // Draw tree
+            const treeContainer = document.getElementById('state-space-tree-container');
+            const treeVisualizer = new TreeVisualizer(treeContainer);
+            treeVisualizer.buildTree(testData, 'A', 3);
+
+            console.log('✅ Draw complete!');
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Algorithms Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Search Algorithms Visualizer</h1>
+        <p>Interactive visualization of graph search algorithms</p>
+    </header>
+
+    <!-- Input Section -->
+    <section id="input-section">
+        <div class="input-row" style="justify-content: center; margin-bottom: 20px;">
+            <div class="input-mode-toggle">
+                <label>
+                    <input type="radio" name="input-mode" value="custom" checked>
+                    <span>Graph Definition</span>
+                </label>
+                <label>
+                    <input type="radio" name="input-mode" value="predefined">
+                    <span>Predefined Example</span>
+                </label>
+            </div>
+        </div>
+        <div class="input-row" id="input-fields-container">
+            <div class="input-col" id="custom-graph-col">
+                <h3>Graph Definition</h3>
+                <label for="graph-input">Adjacency List (JSON):</label>
+                <textarea id="graph-input" rows="6" placeholder='{"A": ["B", "C"], "B": ["A", "D"], ...}'></textarea>
+                <label for="weights-input">Weights (JSON, optional):</label>
+                <textarea id="weights-input" rows="3" placeholder='{"A-B": 5, "B-D": 3, ...}'></textarea>
+                <label for="heuristic-input">Heuristics (JSON, optional):</label>
+                <textarea id="heuristic-input" rows="3" placeholder='{"A": 10, "B": 8, "F": 0, ...}'></textarea>
+            </div>
+            <div class="input-col" id="predefined-graph-col" style="display: none;">
+                <h3>Predefined Example</h3>
+                <label for="example-graph">Load Example:</label>
+                <select id="example-graph">
+                    <option value="">-- Select Example --</option>
+                    <option value="simple">Simple Graph</option>
+                    <option value="complex">Complex Graph</option>
+                </select>
+                <div id="example-preview" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; display: none;">
+                    <h4 style="color: #667eea; margin-bottom: 10px;">Preview:</h4>
+                    <pre id="example-preview-content" style="font-size: 0.85em; overflow: auto; max-height: 200px;"></pre>
+                </div>
+            </div>
+            <div class="input-col">
+                <h3>Start & Goal Nodes</h3>
+                <label for="graph-start">Start Node:</label>
+                <input type="text" id="graph-start" placeholder="e.g., A">
+                <label for="graph-goal">Goal Node(s):</label>
+                <input type="text" id="graph-goal" placeholder="e.g., F or F,G,H">
+            </div>
+        </div>
+        <div class="input-row">
+            <button id="draw-graph" class="btn btn-info">Draw</button>
+        </div>
+    </section>
+
+    <!-- Visualization Section -->
+    <section id="visualization-section">
+        <div class="visualization-row">
+            <div class="visualization-col">
+                <h3>Graph</h3>
+                <div id="graph-container" class="viz-panel"></div>
+                <div id="opened-nodes-graph" class="node-list">
+                    <h4>Opened Nodes</h4>
+                    <ul id="opened-list-graph"></ul>
+                </div>
+                <div id="closed-nodes-graph" class="node-list">
+                    <h4>Closed Nodes</h4>
+                    <ul id="closed-list-graph"></ul>
+                </div>
+            </div>
+            <div class="visualization-col">
+                <h3>State Space Tree</h3>
+                <div id="state-space-tree-container" class="viz-panel tree-container"></div>
+                <div id="opened-nodes-tree" class="node-list">
+                    <h4>Opened Nodes</h4>
+                    <ul id="opened-list-tree"></ul>
+                </div>
+                <div id="closed-nodes-tree" class="node-list">
+                    <h4>Closed Nodes</h4>
+                    <ul id="closed-list-tree"></ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Controls Section -->
+    <section id="controls-section">
+        <div class="controls">
+            <div class="control-group">
+                <label for="graph-algorithm">Algorithm:</label>
+                <select id="graph-algorithm">
+                    <option value="bfs">Breadth-First Search (BFS)</option>
+                    <option value="dfs">Depth-First Search (DFS)</option>
+                    <option value="dijkstra">Dijkstra's Algorithm</option>
+                    <option value="astar">A* Search</option>
+                    <option value="greedy">Greedy Best-First Search</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="visualization-mode">Visualization Mode:</label>
+                <select id="visualization-mode">
+                    <option value="auto">Auto (Automatic)</option>
+                    <option value="manual">Manual (Step-by-Step)</option>
+                </select>
+            </div>
+            <div class="control-group" id="speed-control-group">
+                <label for="animation-speed">Animation Speed:</label>
+                <select id="animation-speed">
+                    <option value="2000">Slow (2s)</option>
+                    <option value="1000">Medium (1s)</option>
+                    <option value="500" selected>Normal (0.5s)</option>
+                    <option value="200">Fast (0.2s)</option>
+                    <option value="50">Very Fast (0.05s)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="tree-depth">Max Tree Depth:</label>
+                <input type="number" id="tree-depth" min="1" max="10" value="4" style="width: 80px; padding: 5px;">
+                <span style="margin-left: 10px; color: #666; font-size: 0.9em;">Controls how many levels deep to generate the tree</span>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button id="start-search" class="btn btn-primary">Start Search</button>
+            <button id="clear-results" class="btn btn-secondary">Clear Results</button>
+            <button id="manual-action" class="btn btn-warning" style="display:none;">Next Step</button>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="results-section">
+        <div id="graph-stats" class="stats"></div>
+        <div id="search-results">
+            <h3>Search Results</h3>
+            <div id="traversal-order">
+                <strong>Traversal Order:</strong> <span id="traversal-list"></span>
+            </div>
+            <div id="search-path">
+                <strong>Path:</strong> <span id="path-list"></span>
+            </div>
+            <div id="search-stats">
+                <strong>Stats:</strong> <span id="stats-list"></span>
+            </div>
+        </div>
+    </section>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
