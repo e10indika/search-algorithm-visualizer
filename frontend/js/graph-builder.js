@@ -112,6 +112,9 @@ export class GraphBuilder {
             } else if (goalNodes.includes(node)) {
                 nodeClass = 'node-circle goal';
             }
+            // else if (node.label.endsWith('loop')) {
+            //     nodeClass = 'node-circle loop';
+            // }
 
             SVGRenderer.drawNode(this.svg, pos.x, pos.y, node, nodeClass);
         });

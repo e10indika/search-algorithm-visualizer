@@ -3,7 +3,7 @@
  * Generates and visualizes complete state space trees
  */
 
-import { SVGRenderer } from './svg-renderer.js';
+import {SVGRenderer} from './svg-renderer.js';
 
 export class TreeVisualizer {
     constructor(container) {
@@ -16,21 +16,23 @@ export class TreeVisualizer {
     /**
      * Generate and build the complete state space tree
      */
-    buildTree(graphData, startNode, maxDepth = 4) {
+    buildTree(graphData, startNode, maxDepth = 4, goalNodes = []) {
         // Clear container
         this.container.innerHTML = '';
 
         // Generate tree structure
-        this.treeData = this.generateStateSpaceTree(graphData.graph, startNode, maxDepth);
+        this.treeData = this.generateSearchTree(graphData.graph, startNode, maxDepth, goalNodes);
 
         // Calculate SVG dimensions based on tree size
-        const { width, height } = this.calculateTreeDimensions(this.treeData, maxDepth);
+        const {width, height} = this.calculateTreeDimensions(this.treeData, maxDepth);
 
         // Create SVG
         this.svg = SVGRenderer.createSVG(width, height);
         this.container.appendChild(this.svg);
+        this.addZoomControls();
 
         // Calculate node positions
+        this.computeSubtreeSizes(this.treeData);
         this.calculateTreeLayout(this.treeData, width / 2, 40, width, 0);
 
         // Draw tree
@@ -40,22 +42,125 @@ export class TreeVisualizer {
     }
 
     /**
-     * Generate state space tree using BFS
+     * Add zoom in/out buttons to the container
      */
-    generateStateSpaceTree(graph, startNode, maxDepth) {
+    addZoomControls() {
+        let isDragging = false;
+        let dragStart = {x: 0, y: 0};
+        let viewBoxStart = [0, 0, 0, 0];
+
+        this.container.addEventListener('mouseenter', () => {
+            if (this.container.querySelector('.zoom-controls')) return;
+            const zoomControls = document.createElement('div');
+            zoomControls.className = 'zoom-controls';
+            zoomControls.style.display = 'flex';
+            zoomControls.style.gap = '8px';
+            zoomControls.style.marginBottom = '8px';
+            zoomControls.style.position = 'absolute';
+            zoomControls.style.top = '8px';
+            zoomControls.style.right = '8px';
+            zoomControls.style.zIndex = '10';
+
+            const zoomInBtn = document.createElement('button');
+            zoomInBtn.textContent = '+';
+            zoomInBtn.title = 'Zoom In';
+            zoomInBtn.onclick = (e) => {
+                this.zoomSVG(1.2, e);
+            };
+
+            const zoomOutBtn = document.createElement('button');
+            zoomOutBtn.textContent = '−';
+            zoomOutBtn.title = 'Zoom Out';
+            zoomOutBtn.onclick = (e) => {
+                this.zoomSVG(0.8, e);
+            };
+
+            zoomControls.appendChild(zoomInBtn);
+            zoomControls.appendChild(zoomOutBtn);
+            this.container.prepend(zoomControls);
+
+            // Add drag support
+            if (this.svg) {
+                this.svg.style.cursor = 'grab';
+                this.svg.onmousedown = (e) => {
+                    isDragging = true;
+                    this.svg.style.cursor = 'grabbing';
+                    dragStart = {x: e.clientX, y: e.clientY};
+                    const viewBox = this.svg.getAttribute('viewBox') || `0 0 ${this.svg.width.baseVal.value} ${this.svg.height.baseVal.value}`;
+                    viewBoxStart = viewBox.split(' ').map(Number);
+                    e.preventDefault();
+                };
+                window.onmousemove = (e) => {
+                    if (!isDragging) return;
+                    const dx = e.clientX - dragStart.x;
+                    const dy = e.clientY - dragStart.y;
+                    // Move only if zoomed in (viewBox smaller than SVG)
+                    if (viewBoxStart.length === 4) {
+                        let [x, y, w, h] = viewBoxStart;
+                        const scaleX = w / this.svg.width.baseVal.value;
+                        const scaleY = h / this.svg.height.baseVal.value;
+                        let newX = x - dx * scaleX;
+                        let newY = y - dy * scaleY;
+                        // Prevent moving out of bounds
+                        newX = Math.max(0, Math.min(newX, this.svg.width.baseVal.value - w));
+                        newY = Math.max(0, Math.min(newY, this.svg.height.baseVal.value - h));
+                        this.svg.setAttribute('viewBox', `${newX} ${newY} ${w} ${h}`);
+                    }
+                };
+                window.onmouseup = () => {
+                    isDragging = false;
+                    if (this.svg) this.svg.style.cursor = 'grab';
+                };
+            }
+        });
+
+        this.container.addEventListener('mouseleave', () => {
+            const controls = this.container.querySelector('.zoom-controls');
+            if (controls) controls.remove();
+            if (this.svg) {
+                this.svg.onmousedown = null;
+                window.onmousemove = null;
+                window.onmouseup = null;
+                this.svg.style.cursor = '';
+            }
+        });
+    }
+
+    /**
+     * Zoom the SVG by scaling the viewBox
+     */
+    zoomSVG(factor) {
+        if (!this.svg) return;
+        const viewBox = this.svg.getAttribute('viewBox') || `0 0 ${this.svg.width.baseVal.value} ${this.svg.height.baseVal.value}`;
+        const [x, y, w, h] = viewBox.split(' ').map(Number);
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const newW = w / factor;
+        const newH = h / factor;
+        this.svg.setAttribute('viewBox', `${cx - newW / 2} ${cy - newH / 2} ${newW} ${newH}`);
+    }
+
+    /**
+     * Generate state space graph
+     */
+    generateSearchTree(graph, startNode, maxDepth, goalNodes = []) {
         const root = {
-            id: `${startNode}-0`,
-            label: startNode,
-            path: [startNode],
-            depth: 0,
-            children: []
+            id: `${startNode}-0`, label: startNode, path: [startNode], depth: 0, children: []
         };
 
         const queue = [root];
         let nodeCount = 0;
+        let goalFound = false;
 
-        while (queue.length > 0 && nodeCount < 1000) { // Limit to prevent infinite trees
+        while (queue.length > 0 && nodeCount < 1000 && !goalFound) { // Stop when goal is found
             const currentNode = queue.shift();
+
+            // Check if current node is a goal node
+            if (goalNodes.includes(currentNode.label)) {
+                console.log(`🎯 Goal node "${currentNode.label}" found in state space tree!`);
+                // goalFound = true;
+                continue; // Don't expand goal nodes
+            }
 
             // Stop expanding if we've reached max depth
             if (currentNode.depth >= maxDepth) {
@@ -66,6 +171,23 @@ export class TreeVisualizer {
             const neighbors = graph[currentLabel] || [];
 
             neighbors.forEach(neighbor => {
+                // Skip if neighbor is already in the path (prevent backward/cyclic nodes)
+                const lastNode = currentNode.path[currentNode.path.length - 1];
+                if (!(lastNode && lastNode.label && lastNode.label.endsWith('(loop)')) && currentNode.path.includes(neighbor)) {
+                    // Add neighbor to path and label as loop node
+                    const loopChild = {
+                        id: `${neighbor}-loop-${nodeCount++}`,
+                        label: `${neighbor} (loop)`,
+                        path: [...currentNode.path, neighbor],
+                        depth: currentNode.depth + 1,
+                        parent: currentNode,
+                        children: []
+                    };
+                    currentNode.children.push(loopChild);
+                    console.log(`🔁 Loop node "${loopChild.label}" added (Path: ${loopChild.path.join('→')})`);
+                    return;
+                }
+
                 // Create child node
                 const childPath = [...currentNode.path, neighbor];
                 const childId = `${neighbor}-${nodeCount++}`;
@@ -80,7 +202,12 @@ export class TreeVisualizer {
                 };
 
                 currentNode.children.push(child);
-                queue.push(child);
+                console.log(`➕ Added node "${child.label}" at depth ${child.depth} (Path: ${child.path.join('→')})`);
+
+                // Only add to queue if goal hasn't been found yet
+                if (!goalFound) {
+                    queue.push(child);
+                }
             });
         }
 
@@ -94,7 +221,7 @@ export class TreeVisualizer {
         const leafCount = this.countLeaves(tree);
         const width = Math.max(800, leafCount * 60);
         const height = Math.max(500, (maxDepth + 1) * 100);
-        return { width, height };
+        return {width, height};
     }
 
     /**
@@ -110,11 +237,11 @@ export class TreeVisualizer {
     /**
      * Calculate tree layout positions (using Reingold-Tilford algorithm simplified)
      */
-    calculateTreeLayout(node, x, y, width, index) {
+    calculateTreeLayoutOld(node, x, y, width, index) {
         if (!node) return;
 
         // Store position
-        this.nodePositions.set(node.id, { x, y, label: node.label });
+        this.nodePositions.set(node.id, {x, y, label: node.label});
 
         const childCount = node.children.length;
         if (childCount === 0) return;
@@ -123,9 +250,55 @@ export class TreeVisualizer {
         const childY = y + 80;
 
         node.children.forEach((child, i) => {
+            // Position children from leftmost, evenly spaced
             const childX = x - width / 2 + childWidth * (i + 0.5);
             this.calculateTreeLayout(child, childX, childY, childWidth, i);
         });
+
+        // const childWidth = width / childCount;
+        // const childY = y + 80;
+        //
+        // node.children.forEach((child, i) => {
+        //     const childX = x - width / 2 + childWidth * (i + 0.5);
+        //     this.calculateTreeLayout(child, childX, childY, childWidth, i);
+        // });
+    }
+
+// Step 1: Compute subtree sizes (number of leaves under each node)
+    computeSubtreeSizes(node) {
+        if (!node.children || node.children.length === 0) {
+            node.subtreeSize = 1;
+            return 1;
+        }
+        let size = 0;
+        for (const child of node.children) {
+            size += this.computeSubtreeSizes(child);
+        }
+        node.subtreeSize = size;
+        return size;
+    }
+
+// Step 2: Layout calculation using subtree sizes
+    calculateTreeLayout(node, x, y, totalWidth) {
+        if (!node) return;
+
+        this.nodePositions.set(node.id, {x, y, label: node.label});
+
+        if (!node.children || node.children.length === 0) return;
+
+        const totalSubtreeSize = node.children.reduce((sum, c) => sum + c.subtreeSize, 0);
+        const spacing = totalWidth / totalSubtreeSize;
+        let currentX = x - totalWidth / 2;
+
+        const childY = y + 80;
+
+        for (const child of node.children) {
+            const childWidth = spacing * child.subtreeSize;
+            const childCenterX = currentX + childWidth / 2;
+
+            this.calculateTreeLayout(child, childCenterX, childY, childWidth);
+            currentX += childWidth;
+        }
     }
 
     /**

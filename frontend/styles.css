@@ -453,6 +453,11 @@ svg {
     stroke: #c62828;
 }
 
+.node-circle.loop {
+    fill: #f3e6e6;
+    stroke: #e6b6b6;
+}
+
 .node-circle.current {
     fill: #ffa726;
     stroke: #e65100;
@@ -492,6 +497,7 @@ svg {
 .edge-line.path {
     stroke: #f57f17;
     stroke-width: 3;
+    stroke-dasharray: 5,5;
 }
 
 .edge-weight {
@@ -505,6 +511,7 @@ svg {
     fill: #e3f2fd;
     stroke: #1976d2;
     stroke-width: 2;
+    stroke-dasharray: 4 8;
     cursor: pointer;
 }
 
