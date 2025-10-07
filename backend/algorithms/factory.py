@@ -50,4 +50,3 @@ class AlgorithmFactory:
     def available_algorithms(cls) -> List[str]:
         """Get list of available algorithm names"""
         return list(cls._algorithms.keys())
-

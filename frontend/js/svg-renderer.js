@@ -67,6 +67,7 @@ export class SVGRenderer {
      */
     static drawEdge(svg, x1, y1, x2, y2, weight = null, directed = false, edgeClass = 'edge-line') {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', 'edge-group');
 
         // Calculate the shortened line to account for node radius
         const radius = 25;
@@ -83,6 +84,7 @@ export class SVGRenderer {
         line.setAttribute('x2', endX);
         line.setAttribute('y2', endY);
         line.setAttribute('class', edgeClass);
+        line.setAttribute('data-edge', `${x1},${y1}-${x2},${y2}`);
         if (directed) {
             line.classList.add('directed');
         }
@@ -166,6 +168,7 @@ export class SVGRenderer {
         line.setAttribute('x2', x2);
         line.setAttribute('y2', y2 - 20);
         line.setAttribute('class', linkClass);
+        line.setAttribute('data-link', `${x1},${y1}-${x2},${y2}`);
 
         svg.insertBefore(line, svg.firstChild);
         return line;
@@ -187,6 +190,92 @@ export class SVGRenderer {
         const node = svg.querySelector(`[data-node="${nodeLabel}"] circle`);
         if (node) {
             node.setAttribute('class', newClass);
+        }
+    }
+
+    /**
+     * Highlight path edges in graph
+     */
+    static highlightPathEdges(svg, path, positions) {
+        if (!path || path.length < 2) return;
+
+        for (let i = 0; i < path.length - 1; i++) {
+            const node1 = path[i];
+            const node2 = path[i + 1];
+            const pos1 = positions[node1];
+            const pos2 = positions[node2];
+
+            if (pos1 && pos2) {
+                // Find the edge line element
+                const lines = svg.querySelectorAll('line.edge-line');
+                lines.forEach(line => {
+                    const x1 = parseFloat(line.getAttribute('x1'));
+                    const y1 = parseFloat(line.getAttribute('y1'));
+                    const x2 = parseFloat(line.getAttribute('x2'));
+                    const y2 = parseFloat(line.getAttribute('y2'));
+
+                    // Check if this line connects the two nodes (in either direction)
+                    const connects = (
+                        (Math.abs(x1 - pos1.x) < 30 && Math.abs(y1 - pos1.y) < 30 &&
+                         Math.abs(x2 - pos2.x) < 30 && Math.abs(y2 - pos2.y) < 30) ||
+                        (Math.abs(x1 - pos2.x) < 30 && Math.abs(y1 - pos2.y) < 30 &&
+                         Math.abs(x2 - pos1.x) < 30 && Math.abs(y2 - pos1.y) < 30)
+                    );
+
+                    if (connects) {
+                        line.classList.add('path');
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Highlight path in tree
+     */
+    static highlightTreePath(svg, pathNodes, nodePositions) {
+        if (!pathNodes || pathNodes.length < 2) return;
+
+        // For each consecutive pair in the path, highlight the link
+        for (let i = 0; i < pathNodes.length - 1; i++) {
+            const node1Label = pathNodes[i];
+            const node2Label = pathNodes[i + 1];
+
+            // Find positions for these nodes in the tree
+            let node1Pos = null;
+            let node2Pos = null;
+
+            for (const [id, pos] of nodePositions.entries()) {
+                if (pos.label === node1Label && !node1Pos) {
+                    node1Pos = pos;
+                }
+                if (pos.label === node2Label && !node2Pos) {
+                    node2Pos = pos;
+                }
+            }
+
+            if (node1Pos && node2Pos) {
+                // Find and highlight the link between these positions
+                const links = svg.querySelectorAll('line.tree-link');
+                links.forEach(link => {
+                    const x1 = parseFloat(link.getAttribute('x1'));
+                    const y1 = parseFloat(link.getAttribute('y1'));
+                    const x2 = parseFloat(link.getAttribute('x2'));
+                    const y2 = parseFloat(link.getAttribute('y2'));
+
+                    // Check if this link connects the two positions
+                    const connects = (
+                        (Math.abs(x1 - node1Pos.x) < 5 && Math.abs(y1 - node1Pos.y - 20) < 5 &&
+                         Math.abs(x2 - node2Pos.x) < 5 && Math.abs(y2 - node2Pos.y + 20) < 5) ||
+                        (Math.abs(x1 - node2Pos.x) < 5 && Math.abs(y1 - node2Pos.y - 20) < 5 &&
+                         Math.abs(x2 - node1Pos.x) < 5 && Math.abs(y2 - node1Pos.y + 20) < 5)
+                    );
+
+                    if (connects) {
+                        link.classList.add('path');
+                    }
+                });
+            }
         }
     }
 

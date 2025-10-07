@@ -1,17 +1,21 @@
 """
 Search Algorithms Implementation
-Updated to use built-in NetworkX algorithms for better performance and reliability
+Updated to use custom implementations with step-by-step tracking
 """
 
 from algorithms import (
-    NetworkXSearchAdapter,
+    BreadthFirstSearch,
+    DepthFirstSearch,
+    DijkstraSearch,
+    AStarSearch,
+    GreedyBestFirstSearch,
     StateSpaceTreeGenerator
 )
 
 
 class SearchAlgorithms:
     """
-    Wrapper class for search algorithms using NetworkX built-in implementations
+    Wrapper class for search algorithms with step-by-step tracking
     """
 
     @staticmethod
@@ -21,35 +25,35 @@ class SearchAlgorithms:
 
     @staticmethod
     def bfs(graph, start, goal):
-        """Breadth-First Search using NetworkX"""
-        adapter = NetworkXSearchAdapter(graph)
-        result = adapter.bfs(start, goal)
+        """Breadth-First Search with step-by-step tracking"""
+        algorithm = BreadthFirstSearch(graph)
+        result = algorithm.search(start, goal)
         return result.to_dict()
 
     @staticmethod
     def dfs(graph, start, goal):
-        """Depth-First Search using NetworkX"""
-        adapter = NetworkXSearchAdapter(graph)
-        result = adapter.dfs(start, goal)
+        """Depth-First Search with step-by-step tracking"""
+        algorithm = DepthFirstSearch(graph)
+        result = algorithm.search(start, goal)
         return result.to_dict()
 
     @staticmethod
     def dijkstra(graph, start, goal, weights):
-        """Dijkstra's Algorithm using NetworkX"""
-        adapter = NetworkXSearchAdapter(graph)
-        result = adapter.dijkstra(start, goal, weights=weights)
+        """Dijkstra's Algorithm with step-by-step tracking"""
+        algorithm = DijkstraSearch(graph)
+        result = algorithm.search(start, goal, weights=weights)
         return result.to_dict()
 
     @staticmethod
     def a_star(graph, start, goal, weights, heuristic):
-        """A* Search Algorithm using NetworkX"""
-        adapter = NetworkXSearchAdapter(graph)
-        result = adapter.astar(start, goal, weights=weights, heuristic=heuristic)
+        """A* Search Algorithm with step-by-step tracking"""
+        algorithm = AStarSearch(graph)
+        result = algorithm.search(start, goal, weights=weights, heuristic=heuristic)
         return result.to_dict()
 
     @staticmethod
     def greedy_best_first(graph, start, goal, heuristic):
-        """Greedy Best-First Search using NetworkX"""
-        adapter = NetworkXSearchAdapter(graph)
-        result = adapter.greedy_best_first(start, goal, heuristic=heuristic)
+        """Greedy Best-First Search with step-by-step tracking"""
+        algorithm = GreedyBestFirstSearch(graph)
+        result = algorithm.search(start, goal, heuristic=heuristic)
         return result.to_dict()

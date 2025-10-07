@@ -138,7 +138,11 @@ export class GraphBuilder {
      * Highlight path
      */
     highlightPath(path) {
+        // Highlight nodes
         SVGRenderer.highlightPath(this.svg, path);
+
+        // Highlight edges
+        SVGRenderer.highlightPathEdges(this.svg, path, this.positions);
     }
 
     /**

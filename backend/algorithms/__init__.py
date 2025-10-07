@@ -3,6 +3,7 @@ Search Algorithms Package
 Organized collection of graph search algorithms
 """
 
+from .base import SearchStep, SearchResult
 from .uninformed_search import BreadthFirstSearch, DepthFirstSearch
 from .informed_search import AStarSearch, GreedyBestFirstSearch
 from .weighted_search import DijkstraSearch
@@ -12,6 +13,8 @@ from .library_based import NetworkXSearchAdapter, HeapqSearchOptimized
 from .utils import AlgorithmBenchmark, AlgorithmSelector
 
 __all__ = [
+    'SearchStep',
+    'SearchResult',
     'BreadthFirstSearch',
     'DepthFirstSearch',
     'AStarSearch',

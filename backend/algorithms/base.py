@@ -7,6 +7,47 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Set, Tuple, Optional, Any
 
 
+class SearchStep:
+    """Data class to encapsulate a single step in the search process"""
+
+    def __init__(
+        self,
+        step_number: int,
+        current_node: str,
+        action: str,  # 'visit', 'expand', 'goal_found', 'add_to_frontier'
+        path_so_far: List[str],
+        visited: List[str],
+        frontier: List[str],
+        parent: Dict[str, Optional[str]],
+        tree_edges: List[List[str]],
+        **kwargs
+    ):
+        self.step_number = step_number
+        self.current_node = current_node
+        self.action = action
+        self.path_so_far = path_so_far
+        self.visited = visited.copy()
+        self.frontier = frontier.copy()
+        self.parent = parent.copy()
+        self.tree_edges = [edge.copy() for edge in tree_edges]
+        self.extra = kwargs  # For algorithm-specific data
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert step to dictionary for JSON serialization"""
+        result = {
+            'step_number': self.step_number,
+            'current_node': self.current_node,
+            'action': self.action,
+            'path_so_far': self.path_so_far,
+            'visited': self.visited,
+            'frontier': self.frontier,
+            'parent': self.parent,
+            'tree_edges': self.tree_edges
+        }
+        result.update(self.extra)
+        return result
+
+
 class SearchResult:
     """Data class to encapsulate search algorithm results"""
 
@@ -18,6 +59,7 @@ class SearchResult:
         algorithm: str,
         parent: Dict[str, Optional[str]],
         tree_edges: List[List[str]],
+        steps: Optional[List[SearchStep]] = None,
         **kwargs
     ):
         self.path = path
@@ -26,6 +68,7 @@ class SearchResult:
         self.algorithm = algorithm
         self.parent = parent
         self.tree_edges = tree_edges
+        self.steps = steps or []
         self.extra = kwargs  # For algorithm-specific data (cost, distance, etc.)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -36,7 +79,8 @@ class SearchResult:
             'success': self.success,
             'algorithm': self.algorithm,
             'parent': self.parent,
-            'tree_edges': self.tree_edges
+            'tree_edges': self.tree_edges,
+            'steps': [step.to_dict() for step in self.steps]
         }
         result.update(self.extra)
         return result
@@ -78,6 +122,7 @@ class BaseSearchAlgorithm(ABC):
         success: bool,
         parent: Dict[str, Optional[str]],
         tree_edges: List[List[str]],
+        steps: Optional[List[SearchStep]] = None,
         **kwargs
     ) -> SearchResult:
         """Build a SearchResult object"""
@@ -88,6 +133,6 @@ class BaseSearchAlgorithm(ABC):
             algorithm=self.__class__.__name__,
             parent=parent,
             tree_edges=tree_edges,
+            steps=steps,
             **kwargs
         )
-

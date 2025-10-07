@@ -87,3 +87,123 @@ header p {
     border-color: #667eea;
 }
 
+/* SVG Graph and Tree Styles */
+.edge-line {
+    stroke: #999;
+    stroke-width: 2;
+    fill: none;
+    transition: stroke 0.3s, stroke-width 0.3s;
+}
+
+.edge-line.path {
+    stroke: #4CAF50;
+    stroke-width: 4;
+    stroke-dasharray: none;
+}
+
+.edge-line.visited {
+    stroke: #2196F3;
+    stroke-width: 2.5;
+}
+
+.tree-link {
+    stroke: #ccc;
+    stroke-width: 2;
+    fill: none;
+    transition: stroke 0.3s, stroke-width 0.3s;
+}
+
+.tree-link.path {
+    stroke: #4CAF50;
+    stroke-width: 4;
+}
+
+.tree-link.visited {
+    stroke: #2196F3;
+    stroke-width: 2.5;
+}
+
+.node-circle {
+    fill: #fff;
+    stroke: #999;
+    stroke-width: 2;
+    transition: all 0.3s;
+}
+
+.node-circle.start {
+    fill: #FFD700;
+    stroke: #FFA500;
+    stroke-width: 3;
+}
+
+.node-circle.goal {
+    fill: #90EE90;
+    stroke: #4CAF50;
+    stroke-width: 3;
+}
+
+.node-circle.visited {
+    fill: #B3D9FF;
+    stroke: #2196F3;
+}
+
+.node-circle.path {
+    fill: #4CAF50;
+    stroke: #2E7D32;
+    stroke-width: 3;
+}
+
+.node-circle.current {
+    fill: #FF6B6B;
+    stroke: #C92A2A;
+    stroke-width: 3;
+    animation: pulse 1s infinite;
+}
+
+.tree-node {
+    fill: #fff;
+    stroke: #999;
+    stroke-width: 2;
+    transition: all 0.3s;
+}
+
+.tree-node.visited {
+    fill: #B3D9FF;
+    stroke: #2196F3;
+}
+
+.tree-node.path {
+    fill: #4CAF50;
+    stroke: #2E7D32;
+    stroke-width: 3;
+}
+
+.tree-node.current {
+    fill: #FF6B6B;
+    stroke: #C92A2A;
+    stroke-width: 3;
+}
+
+.node-label, .tree-label {
+    fill: #333;
+    font-size: 14px;
+    font-weight: bold;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.edge-weight {
+    fill: #666;
+    font-size: 12px;
+    text-anchor: middle;
+    font-weight: bold;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}

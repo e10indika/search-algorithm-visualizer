@@ -351,6 +351,107 @@ export class TreeVisualizer {
     }
 
     /**
+     * Highlight path in the tree (both nodes and edges)
+     */
+    highlightPath(path) {
+        if (!path || path.length === 0) return;
+
+        console.log('🎯 Highlighting path in tree:', path);
+
+        // Find the actual path through the tree by matching the sequence
+        const pathNodeIds = this.findPathInTree(path);
+
+        if (pathNodeIds.length === 0) {
+            console.warn('⚠️ Could not find path in tree');
+            return;
+        }
+
+        console.log('Found path node IDs:', pathNodeIds);
+
+        // Highlight path nodes
+        pathNodeIds.forEach(nodeId => {
+            const node = this.svg.querySelector(`[data-node="${nodeId}"] circle`);
+            if (node) {
+                node.setAttribute('class', 'tree-node path');
+            }
+        });
+
+        // Highlight path edges by connecting consecutive nodes in pathNodeIds
+        for (let i = 0; i < pathNodeIds.length - 1; i++) {
+            const nodeId1 = pathNodeIds[i];
+            const nodeId2 = pathNodeIds[i + 1];
+            const pos1 = this.nodePositions.get(nodeId1);
+            const pos2 = this.nodePositions.get(nodeId2);
+
+            if (pos1 && pos2) {
+                // Find and highlight the link between these specific positions
+                const links = this.svg.querySelectorAll('line.tree-link');
+                links.forEach(link => {
+                    const x1 = parseFloat(link.getAttribute('x1'));
+                    const y1 = parseFloat(link.getAttribute('y1'));
+                    const x2 = parseFloat(link.getAttribute('x2'));
+                    const y2 = parseFloat(link.getAttribute('y2'));
+
+                    // Check if this link connects the two positions
+                    const connects = (
+                        Math.abs(x1 - pos1.x) < 2 && Math.abs(y1 - pos1.y - 20) < 2 &&
+                        Math.abs(x2 - pos2.x) < 2 && Math.abs(y2 - pos2.y + 20) < 2
+                    );
+
+                    if (connects) {
+                        link.classList.add('path');
+                        console.log(`✅ Highlighted edge: ${pos1.label} -> ${pos2.label}`);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Find the actual path through the tree matching the search result path
+     */
+    findPathInTree(searchPath) {
+        if (!this.treeData || !searchPath || searchPath.length === 0) return [];
+
+        // Start from root and traverse to find matching path
+        const pathNodeIds = [];
+
+        // Recursive function to find path
+        const findPath = (node, targetPath, currentIndex) => {
+            if (!node) return false;
+
+            // Check if current node matches the target at this index
+            if (node.label !== targetPath[currentIndex]) {
+                return false;
+            }
+
+            // Add this node to the path
+            pathNodeIds.push(node.id);
+
+            // If we've matched the entire path, we're done
+            if (currentIndex === targetPath.length - 1) {
+                return true;
+            }
+
+            // Try to find the next node in the path among children
+            for (const child of node.children) {
+                if (findPath(child, targetPath, currentIndex + 1)) {
+                    return true;
+                }
+            }
+
+            // If no child matched, backtrack
+            pathNodeIds.pop();
+            return false;
+        };
+
+        // Start the search from root
+        findPath(this.treeData, searchPath, 0);
+
+        return pathNodeIds;
+    }
+
+    /**
      * Clear the tree
      */
     clear() {
