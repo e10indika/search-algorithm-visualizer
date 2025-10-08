@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithm Test - Search Algorithms</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 JavaScript Search Algorithms Test</h1>
+        <p>Testing all converted algorithms to verify they work without the backend.</p>
+
+        <div>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        import { SearchAlgorithms } from './js/algorithms/search-algorithms.js';
+
+        // Test graph
+        const graph = {
+            'A': ['B', 'C'],
+            'B': ['A', 'D', 'E'],
+            'C': ['A', 'D', 'F'],
+            'D': ['B', 'C'],
+            'E': ['B', 'F'],
+            'F': ['C', 'E']
+        };
+
+        const weights = {
+            'A,B': 1, 'B,A': 1,
+            'A,C': 3, 'C,A': 3,
+            'B,D': 2, 'D,B': 2,
+            'B,E': 4, 'E,B': 4,
+            'C,D': 1, 'D,C': 1,
+            'C,F': 2, 'F,C': 2,
+            'E,F': 1, 'F,E': 1
+        };
+
+        const heuristic = {
+            'A': 5, 'B': 4, 'C': 3,
+            'D': 2, 'E': 2, 'F': 0
+        };
+
+        function displayResult(algorithmName, result) {
+            const resultsDiv = document.getElementById('results');
+            const section = document.createElement('div');
+            section.className = 'test-section';
+
+            const successClass = result.success ? 'success' : 'error';
+            const successText = result.success ? '✅ SUCCESS' : '❌ FAILED';
+
+            section.innerHTML = `
+                <h3>${algorithmName}</h3>
+                <div class="result">
+                    <strong>Status:</strong> <span class="${successClass}">${successText}</span><br>
+                    <strong>Path:</strong> ${result.path.join(' → ') || 'No path found'}<br>
+                    <strong>Visited:</strong> ${result.visited.join(', ')}<br>
+                    <strong>Steps:</strong> ${result.steps.length}<br>
+                    ${result.distance !== undefined ? `<strong>Distance:</strong> ${result.distance}<br>` : ''}
+                    ${result.cost !== undefined ? `<strong>Cost:</strong> ${result.cost}<br>` : ''}
+                </div>
+                <details>
+                    <summary>View First 3 Steps</summary>
+                    <pre>${JSON.stringify(result.steps.slice(0, 3), null, 2)}</pre>
+                </details>
+            `;
+
+            resultsDiv.appendChild(section);
+        }
+
+        window.runAllTests = function() {
+            clearResults();
+            console.log('🧪 Running all algorithm tests...');
+
+            try {
+                // Test BFS
+                console.log('Testing BFS...');
+                const bfsResult = SearchAlgorithms.bfs(graph, 'A', 'F');
+                displayResult('Breadth-First Search (BFS)', bfsResult);
+
+                // Test DFS
+                console.log('Testing DFS...');
+                const dfsResult = SearchAlgorithms.dfs(graph, 'A', 'F');
+                displayResult('Depth-First Search (DFS)', dfsResult);
+
+                // Test Dijkstra
+                console.log('Testing Dijkstra...');
+                const dijkstraResult = SearchAlgorithms.dijkstra(graph, 'A', 'F', weights);
+                displayResult('Dijkstra\'s Algorithm', dijkstraResult);
+
+                // Test A*
+                console.log('Testing A*...');
+                const astarResult = SearchAlgorithms.astar(graph, 'A', 'F', weights, heuristic);
+                displayResult('A* Search', astarResult);
+
+                // Test Greedy Best-First
+                console.log('Testing Greedy Best-First...');
+                const greedyResult = SearchAlgorithms.greedy(graph, 'A', 'F', heuristic);
+                displayResult('Greedy Best-First Search', greedyResult);
+
+                console.log('✅ All tests completed!');
+            } catch (error) {
+                console.error('❌ Test error:', error);
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML += `<div class="test-section"><p class="error">Error: ${error.message}</p></div>`;
+            }
+        };
+
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = '';
+        };
+
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            console.log('Page loaded - ready to run tests');
+        });
+    </script>
+</body>
+</html>
+

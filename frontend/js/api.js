@@ -1,62 +1,49 @@
 /**
  * API Service
+ * Handles search algorithm execution using local JavaScript implementation
  */
 
-import { CONFIG } from './config.js';
+import { SearchAlgorithms } from './algorithms/search-algorithms.js';
 
 export class APIService {
-    static async fetchExamples() {
-        try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/examples/graph`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            console.error('Error loading examples:', error);
-            throw error;
-        }
-    }
-
+    /**
+     * Execute search algorithm locally (no backend required)
+     * @param {object} requestData - Request data containing algorithm, graph, start, goal, etc.
+     * @returns {Promise<object>} Search result
+     */
     static async searchGraph(requestData) {
         try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/search/graph`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
+            const { algorithm, graph, start, goal, weights, heuristic } = requestData;
+
+            console.log('🔍 Executing search locally:', { algorithm, start, goal });
+
+            // Execute the algorithm locally using JavaScript implementation
+            const result = SearchAlgorithms.search(algorithm, graph, start, goal, {
+                weights: weights || {},
+                heuristic: heuristic || {}
             });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
+
+            console.log('✅ Search completed locally:', result);
+
+            return result;
         } catch (error) {
-            console.error('Error running graph search:', error);
-            throw error;
+            console.error('❌ Search error:', error);
+            return {
+                error: error.message,
+                success: false,
+                path: [],
+                visited: [],
+                steps: []
+            };
         }
     }
 
-    static async generateTree(requestData) {
-        try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/generate-tree`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            console.error('Error generating tree:', error);
-            throw error;
-        }
-    }
-
-    static async checkHealth() {
-        try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/health`);
-            const data = await response.json();
-            console.log('✅ Backend connection successful:', data);
-            return true;
-        } catch (error) {
-            console.error('❌ Backend connection failed:', error);
-            alert(`Warning: Cannot connect to backend server at ${CONFIG.API_BASE_URL}\n\nPlease make sure the Flask server is running on port 5001.`);
-            return false;
-        }
+    /**
+     * Legacy method - kept for compatibility
+     * Now executes locally instead of calling backend
+     */
+    static async callBackend(endpoint, data) {
+        console.warn('Backend call intercepted - executing locally instead');
+        return this.searchGraph(data);
     }
 }
-
