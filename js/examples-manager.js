@@ -15,12 +15,12 @@ export class ExamplesManager {
                 'F': ['C', 'E']
             },
             weights: {
-                'A-B': 1,
-                'A-C': 4,
-                'B-D': 2,
-                'B-E': 5,
-                'C-F': 3,
-                'E-F': 1
+                'A,B': 1, 'B,A': 1,
+                'A,C': 4, 'C,A': 4,
+                'B,D': 2, 'D,B': 2,
+                'B,E': 5, 'E,B': 5,
+                'C,F': 3, 'F,C': 3,
+                'E,F': 1, 'F,E': 1
             },
             heuristic: {
                 'A': 6,
@@ -48,22 +48,20 @@ export class ExamplesManager {
                 'J': ['G', 'H']
             },
             weights: {
-                'S-A': 3,
-                'S-B': 2,
-                'A-C': 2,
-                'A-D': 3,
-                'B-D': 5,
-                'B-E': 4,
-                'C-F': 4,
-                'D-F': 2,
-                'D-G': 4,
-                'E-H': 3,
-                'F-I': 3,
-                'G-I': 2,
-                'G-J': 3,
-                'H-J': 2,
-                'I-F': 3,
-                'I-G': 2
+                'S,A': 3, 'A,S': 3,
+                'S,B': 2, 'B,S': 2,
+                'A,C': 2, 'C,A': 2,
+                'A,D': 3, 'D,A': 3,
+                'B,D': 5, 'D,B': 5,
+                'B,E': 4, 'E,B': 4,
+                'C,F': 4, 'F,C': 4,
+                'D,F': 2, 'F,D': 2,
+                'D,G': 4, 'G,D': 4,
+                'E,H': 3, 'H,E': 3,
+                'F,I': 3, 'I,F': 3,
+                'G,I': 2, 'I,G': 2,
+                'G,J': 3, 'J,G': 3,
+                'H,J': 2, 'J,H': 2
             },
             heuristic: {
                 'S': 10,
@@ -80,12 +78,42 @@ export class ExamplesManager {
             },
             start: 'S',
             goal: 'J'
+        },
+        tree: {
+            graph: {
+                'A': ['B', 'C', 'D'],
+                'B': ['E', 'F'],
+                'C': ['G', 'H'],
+                'D': ['I', 'J'],
+                'E': [],
+                'F': [],
+                'G': [],
+                'H': [],
+                'I': [],
+                'J': []
+            },
+            weights: {
+                'A,B': 1, 'B,A': 1,
+                'A,C': 2, 'C,A': 2,
+                'A,D': 3, 'D,A': 3,
+                'B,E': 1, 'E,B': 1,
+                'B,F': 2, 'F,B': 2,
+                'C,G': 1, 'G,C': 1,
+                'C,H': 2, 'H,C': 2,
+                'D,I': 1, 'I,D': 1,
+                'D,J': 2, 'J,D': 2
+            },
+            heuristic: {
+                'A': 4, 'B': 3, 'C': 3, 'D': 3,
+                'E': 0, 'F': 0, 'G': 0, 'H': 0, 'I': 0, 'J': 0
+            },
+            start: 'A',
+            goal: 'E'
         }
     };
 
     static async loadExamples() {
         console.log('📚 Loading predefined examples...');
-        // Examples are already defined above
         console.log(`✅ Loaded ${Object.keys(this.examples).length} examples`);
         return this.examples;
     }
@@ -100,12 +128,7 @@ export class ExamplesManager {
         return JSON.parse(JSON.stringify(example));
     }
 
-    static listExamples() {
-        return Object.keys(this.examples);
-    }
-
-    static addExample(name, exampleData) {
-        this.examples[name] = exampleData;
-        console.log(`✅ Added example '${name}'`);
+    static getAllExamples() {
+        return this.examples;
     }
 }

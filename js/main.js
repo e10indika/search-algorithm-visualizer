@@ -159,15 +159,19 @@ class App {
                 console.error('JSON parse error:', e);
                 return;
             }
+
+            // Validate that graph data is provided
+            if (!graphData.graph || Object.keys(graphData.graph).length === 0) {
+                alert('Please enter a graph definition in JSON format.\n\nExample:\n{\n  "A": ["B", "C"],\n  "B": ["A", "D"],\n  "C": ["A", "D"],\n  "D": ["B", "C"]\n}');
+                return;
+            }
         }
 
-        // Call the draw function (to be implemented in SearchController or GraphBuilder)
+        // Call the draw function
         if (SearchController.drawGraph) {
             SearchController.drawGraph(graphData);
         } else {
             console.log('Graph data ready:', graphData);
-            // Placeholder: actual drawing logic will be implemented
-            alert('Graph drawing functionality will be implemented in the next step');
         }
     }
 }

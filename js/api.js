@@ -7,6 +7,14 @@ import { SearchAlgorithms } from './algorithms/search-algorithms.js';
 
 export class APIService {
     /**
+     * Check health (no backend needed anymore)
+     */
+    static async checkHealth() {
+        console.log('✅ Running in browser-only mode - no backend required');
+        return { status: 'ok', mode: 'browser-only' };
+    }
+
+    /**
      * Execute search algorithm locally (no backend required)
      * @param {object} requestData - Request data containing algorithm, graph, start, goal, etc.
      * @returns {Promise<object>} Search result

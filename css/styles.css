@@ -168,13 +168,14 @@ header p {
 }
 
 .tree-node.visited {
-    fill: #B3D9FF;
-    stroke: #2196F3;
+    fill: #D7CCC8;
+    stroke: #8D6E63;
+    stroke-width: 2;
 }
 
 .tree-node.path {
-    fill: #4CAF50;
-    stroke: #2E7D32;
+    fill: #FFB74D;
+    stroke: #F57C00;
     stroke-width: 3;
 }
 
@@ -182,6 +183,13 @@ header p {
     fill: #FF6B6B;
     stroke: #C92A2A;
     stroke-width: 3;
+}
+
+.tree-node.opened {
+    stroke: #1976D2;
+    stroke-width: 4;
+    stroke-dasharray: none;
+    fill: #E3F2FD;
 }
 
 .node-label, .tree-label {

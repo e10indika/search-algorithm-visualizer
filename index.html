@@ -19,7 +19,7 @@
             <div class="input-mode-toggle">
                 <label>
                     <input type="radio" name="input-mode" value="custom" checked>
-                    <span>Graph Definition</span>
+                    <span>Custom Graph</span>
                 </label>
                 <label>
                     <input type="radio" name="input-mode" value="predefined">
@@ -31,23 +31,24 @@
             <div class="input-col" id="custom-graph-col">
                 <h3>Graph Definition</h3>
                 <label for="graph-input">Adjacency List (JSON):</label>
-                <textarea id="graph-input" rows="6" placeholder='{"A": ["B", "C"], "B": ["A", "D"], ...}'></textarea>
+                <textarea id="graph-input" rows="6" placeholder='{"A": ["B", "C"], "B": ["A", "D"], "C": ["A", "F"], "D": ["B"], "E": ["B", "F"], "F": ["C", "E"]}'></textarea>
                 <label for="weights-input">Weights (JSON, optional):</label>
-                <textarea id="weights-input" rows="3" placeholder='{"A-B": 5, "B-D": 3, ...}'></textarea>
+                <textarea id="weights-input" rows="3" placeholder='{"A,B": 1, "A,C": 3, "B,D": 2, "C,F": 2, "E,F": 1}'></textarea>
                 <label for="heuristic-input">Heuristics (JSON, optional):</label>
-                <textarea id="heuristic-input" rows="3" placeholder='{"A": 10, "B": 8, "F": 0, ...}'></textarea>
+                <textarea id="heuristic-input" rows="3" placeholder='{"A": 5, "B": 4, "C": 3, "D": 2, "E": 2, "F": 0}'></textarea>
             </div>
             <div class="input-col" id="predefined-graph-col" style="display: none;">
-                <h3>Predefined Example</h3>
-                <label for="example-graph">Load Example:</label>
+                <h3>Predefined Examples</h3>
+                <label for="example-graph">Select Example:</label>
                 <select id="example-graph">
-                    <option value="">-- Select Example --</option>
-                    <option value="simple">Simple Graph</option>
-                    <option value="complex">Complex Graph</option>
+                    <option value="">-- Select an Example --</option>
+                    <option value="simple">Simple Graph (6 nodes)</option>
+                    <option value="complex">Complex Graph (10 nodes)</option>
+                    <option value="tree">Tree Structure (10 nodes)</option>
                 </select>
-                <div id="example-preview" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; display: none;">
-                    <h4 style="color: #667eea; margin-bottom: 10px;">Preview:</h4>
-                    <pre id="example-preview-content" style="font-size: 0.85em; overflow: auto; max-height: 200px;"></pre>
+                <div id="example-preview" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                    <h4 style="color: #667eea; margin-bottom: 10px;">📋 Preview:</h4>
+                    <pre id="example-preview-content" style="font-size: 0.85em; overflow: auto; max-height: 300px; background: white; padding: 10px; border-radius: 5px;"></pre>
                 </div>
             </div>
             <div class="input-col">
@@ -56,10 +57,16 @@
                 <input type="text" id="graph-start" placeholder="e.g., A">
                 <label for="graph-goal">Goal Node(s):</label>
                 <input type="text" id="graph-goal" placeholder="e.g., F or F,G,H">
+                <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196F3;">
+                    <h4 style="margin-top: 0; color: #1976D2;">💡 Quick Start</h4>
+                    <p style="margin: 5px 0; font-size: 0.9em;">🎯 <strong>New users:</strong> Try a predefined example first!</p>
+                    <p style="margin: 5px 0; font-size: 0.9em;">✏️ <strong>Custom graphs:</strong> Use JSON adjacency list format</p>
+                    <p style="margin: 5px 0; font-size: 0.85em; color: #666;">Weights & heuristics are needed for Dijkstra, A*, and Greedy algorithms</p>
+                </div>
             </div>
         </div>
         <div class="input-row">
-            <button id="draw-graph" class="btn btn-info">Draw</button>
+            <button id="draw-graph" class="btn btn-info">Draw Graph & Tree</button>
         </div>
     </section>
 
