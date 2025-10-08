@@ -10,6 +10,7 @@ export class GraphBuilder {
         this.container = container;
         this.graph = null;
         this.weights = null;
+        this.heuristic = null;
         this.positions = {};
         this.svg = null;
     }
@@ -20,6 +21,7 @@ export class GraphBuilder {
     buildGraph(graphData, startNode = null, goalNodes = []) {
         this.graph = graphData.graph;
         this.weights = graphData.weights || {};
+        this.heuristic = graphData.heuristic || {};
 
         // Clear container
         this.container.innerHTML = '';
@@ -72,8 +74,8 @@ export class GraphBuilder {
         Object.keys(this.graph).forEach(node => {
             const neighbors = this.graph[node];
             neighbors.forEach(neighbor => {
-                const edgeKey1 = `${node}-${neighbor}`;
-                const edgeKey2 = `${neighbor}-${node}`;
+                const edgeKey1 = `${node},${neighbor}`;
+                const edgeKey2 = `${neighbor},${node}`;
 
                 // Avoid drawing duplicate edges for undirected graphs
                 if (!drawn.has(edgeKey1) && !drawn.has(edgeKey2)) {
@@ -112,11 +114,11 @@ export class GraphBuilder {
             } else if (goalNodes.includes(node)) {
                 nodeClass = 'node-circle goal';
             }
-            // else if (node.label.endsWith('loop')) {
-            //     nodeClass = 'node-circle loop';
-            // }
 
-            SVGRenderer.drawNode(this.svg, pos.x, pos.y, node, nodeClass);
+            // Get heuristic value for this node
+            const heuristicValue = this.heuristic[node];
+
+            SVGRenderer.drawNode(this.svg, pos.x, pos.y, node, nodeClass, 25, heuristicValue);
         });
     }
 

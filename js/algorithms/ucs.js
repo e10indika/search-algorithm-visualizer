@@ -1,31 +1,32 @@
 /**
- * Depth-First Search Algorithm
- * JavaScript implementation with support for limited depth search
+ * Uniform Cost Search (UCS) Algorithm
+ * Finds the least-cost path by expanding nodes in order of path cost
  */
 
 import { BaseSearchAlgorithm, SearchStep } from './base.js';
+import { PriorityQueue } from './dijkstra.js';
 
-export class DepthFirstSearch extends BaseSearchAlgorithm {
+export class UniformCostSearch extends BaseSearchAlgorithm {
     /**
-     * Execute DFS algorithm
+     * Execute UCS algorithm
      * @param {string} start - Starting node
      * @param {string} goal - Goal node
-     * @param {object} options - Additional options (maxDepth: limit search depth)
-     * @returns {SearchResult} Search result with path and exploration details
+     * @param {object} options - weights: edge weights {(node1, node2): weight}
+     * @returns {SearchResult} Search result with lowest-cost path
      */
     search(start, goal, options = {}) {
-        const maxDepth = options.maxDepth || Infinity;
-        const { visited, visitedSet, parent, treeEdges } = this._initializeSearch(start);
+        const weights = options.weights || {};
 
-        // Ensure start node is marked visited
-        visited.push(start);
-        visitedSet.add(start);
+        const { visited, visitedSet, parent, treeEdges } = this._initializeSearch(start);
+        const costs = { [start]: 0 };
 
         // Start node is at depth 0
         const startId = `${start}-0`;
 
-        // Stack stores [node_label, node_id, path, depth]
-        const stack = [[start, startId, [start], 0]];
+        // Priority queue stores [cost, node_label, node_id, path, depth]
+        const pq = new PriorityQueue();
+        pq.push(0, [start, startId, [start], 0]);
+
         const steps = [];
         let stepNumber = 0;
 
@@ -33,9 +34,9 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
         const openedIds = [startId];
         const closedIds = [];
 
-        // DFS main loop
-        while (stack.length > 0) {
-            const [current, currentId, path, depth] = stack.pop();
+        while (!pq.isEmpty()) {
+            const [current, currentId, path, depth] = pq.pop();
+            const currentCost = costs[current];
 
             // Move current from opened to closed
             const openedIndex = openedIds.indexOf(currentId);
@@ -51,13 +52,17 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
                 visited.push(current);
             }
 
-            // Only explore neighbors if we haven't reached max depth
-            if (depth < maxDepth) {
-                const neighborDepth = depth + 1;
-                const neighbors = this.graph[current] || [];
+            // Explore neighbors at depth + 1
+            const neighborDepth = depth + 1;
+            const neighbors = this.graph[current] || [];
 
-                for (const neighbor of neighbors) {
-                    if (!visitedSet.has(neighbor)) {
+            for (const neighbor of neighbors) {
+                if (!visitedSet.has(neighbor)) {
+                    const weight = weights[`${current},${neighbor}`] || weights[`${neighbor},${current}`] || 1;
+                    const newCost = currentCost + weight;
+
+                    if (!(neighbor in costs) || newCost < costs[neighbor]) {
+                        costs[neighbor] = newCost;
                         visitedSet.add(neighbor);
                         parent[neighbor] = current;
                         treeEdges.push([current, neighbor]);
@@ -65,7 +70,7 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
                         // Generate node ID with path format: parentPath#node-depth
                         const pathStr = path.join('');
                         const neighborId = `${pathStr}#${neighbor}-${neighborDepth}`;
-                        stack.push([neighbor, neighborId, [...path, neighbor], neighborDepth]);
+                        pq.push(newCost, [neighbor, neighborId, [...path, neighbor], neighborDepth]);
 
                         // Add to opened list
                         openedIds.push(neighborId);
@@ -73,7 +78,7 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
                 }
             }
 
-            // Update frontier to reflect current stack
+            // Update frontier to reflect current queue
             const frontierNodeIds = [...openedIds];
 
             // Record step with node IDs
@@ -86,7 +91,8 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
                 frontier: frontierNodeIds,
                 parent: { ...parent },
                 treeEdges: treeEdges.map(e => [...e]),
-                depth
+                costs: { ...costs },
+                current_cost: currentCost
             }));
             stepNumber++;
 
@@ -101,7 +107,8 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
                     frontier: frontierNodeIds,
                     parent: { ...parent },
                     treeEdges: treeEdges.map(e => [...e]),
-                    depth
+                    costs: { ...costs },
+                    total_cost: currentCost
                 }));
 
                 return this._buildResult({
@@ -110,8 +117,9 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
                     success: true,
                     parent,
                     treeEdges,
-                    steps,
-                    depth
+                    total_cost: currentCost,
+                    costs,
+                    steps
                 });
             }
         }
@@ -123,6 +131,7 @@ export class DepthFirstSearch extends BaseSearchAlgorithm {
             success: false,
             parent,
             treeEdges,
+            costs,
             steps
         });
     }

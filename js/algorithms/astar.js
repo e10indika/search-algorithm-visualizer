@@ -21,82 +21,103 @@ export class AStarSearch extends BaseSearchAlgorithm {
         const { visited, visitedSet, parent, treeEdges } = this._initializeSearch(start);
         const gScore = { [start]: 0 };
         const fScore = { [start]: heuristic[start] || 0 };
+
+        // Start node is at depth 0
+        const startId = `${start}-0`;
+
+        // Priority queue stores [f_score, node_label, node_id, path, depth]
         const pq = new PriorityQueue();
-        pq.push(fScore[start], [start, [start]]);
+        pq.push(fScore[start], [start, startId, [start], 0]);
 
         const steps = [];
         let stepNumber = 0;
 
-        // Track opened (frontier) and closed (visited) lists
-        const opened = [start];
-        const closed = [];
-
-        // Initial step
-        steps.push(new SearchStep({
-            stepNumber,
-            currentNode: start,
-            action: 'initialize',
-            pathSoFar: [start],
-            visited: [],
-            frontier: [...opened],
-            parent: { ...parent },
-            treeEdges: [],
-            g_score: { ...gScore },
-            f_score: { ...fScore }
-        }));
-        stepNumber++;
+        // Track opened/closed with node IDs
+        const openedIds = [startId];
+        const closedIds = [];
 
         while (!pq.isEmpty()) {
-            const [current, path] = pq.pop();
+            const [current, currentId, path, depth] = pq.pop();
+            const currentG = gScore[current];
             const currentF = fScore[current];
 
-            if (visitedSet.has(current)) {
-                continue;
-            }
-
-            // Remove current from opened list and add to closed list
-            const openedIndex = opened.indexOf(current);
+            // Move current from opened to closed
+            const openedIndex = openedIds.indexOf(currentId);
             if (openedIndex !== -1) {
-                opened.splice(openedIndex, 1);
+                openedIds.splice(openedIndex, 1);
             }
-            if (!closed.includes(current)) {
-                closed.push(current);
+            if (!closedIds.includes(currentId)) {
+                closedIds.push(currentId);
             }
 
-            visitedSet.add(current);
-            visited.push(current);
+            // Add current to visited if not already there
+            if (!visited.includes(current)) {
+                visited.push(current);
+            }
 
-            // Step: visiting current node
+            // Explore neighbors at depth + 1
+            const neighborDepth = depth + 1;
+            const neighbors = this.graph[current] || [];
+
+            for (const neighbor of neighbors) {
+                if (!visitedSet.has(neighbor)) {
+                    const weight = weights[`${current},${neighbor}`] || weights[`${neighbor},${current}`] || 1;
+                    const tentativeG = currentG + weight;
+
+                    if (!(neighbor in gScore) || tentativeG < gScore[neighbor]) {
+                        gScore[neighbor] = tentativeG;
+                        const f = tentativeG + (heuristic[neighbor] || 0);
+                        fScore[neighbor] = f;
+
+                        visitedSet.add(neighbor);
+                        parent[neighbor] = current;
+                        treeEdges.push([current, neighbor]);
+
+                        // Generate node ID with path format: parentPath#node-depth
+                        const pathStr = path.join('');
+                        const neighborId = `${pathStr}#${neighbor}-${neighborDepth}`;
+                        pq.push(f, [neighbor, neighborId, [...path, neighbor], neighborDepth]);
+
+                        // Add to opened list
+                        openedIds.push(neighborId);
+                    }
+                }
+            }
+
+            // Update frontier to reflect current queue
+            const frontierNodeIds = [...openedIds];
+
+            // Record step with node IDs
             steps.push(new SearchStep({
                 stepNumber,
                 currentNode: current,
                 action: 'visit',
                 pathSoFar: [...path],
-                visited: [...closed],
-                frontier: [...opened],
+                visited: [...closedIds],
+                frontier: frontierNodeIds,
                 parent: { ...parent },
                 treeEdges: treeEdges.map(e => [...e]),
                 g_score: { ...gScore },
                 f_score: { ...fScore },
-                current_g: gScore[current],
+                current_g: currentG,
                 current_f: currentF
             }));
             stepNumber++;
 
+            // Check if goal found
             if (current === goal) {
-                // Step: goal found
                 steps.push(new SearchStep({
                     stepNumber,
                     currentNode: current,
                     action: 'goal_found',
                     pathSoFar: [...path],
-                    visited: [...closed],
-                    frontier: [...opened],
+                    visited: [...closedIds],
+                    frontier: frontierNodeIds,
                     parent: { ...parent },
                     treeEdges: treeEdges.map(e => [...e]),
                     g_score: { ...gScore },
                     f_score: { ...fScore },
-                    cost: gScore[current]
+                    cost: currentG
                 }));
 
                 return this._buildResult({
@@ -105,61 +126,22 @@ export class AStarSearch extends BaseSearchAlgorithm {
                     success: true,
                     parent,
                     treeEdges,
-                    cost: gScore[current],
+                    cost: currentG,
+                    costs: gScore,
                     steps
                 });
             }
-
-            const neighbors = this.graph[current] || [];
-            for (const neighbor of neighbors) {
-                if (!visitedSet.has(neighbor)) {
-                    const weight = weights[`${current},${neighbor}`] || weights[`${neighbor},${current}`] || 1;
-                    const tentativeG = gScore[current] + weight;
-
-                    if (!(neighbor in gScore) || tentativeG < gScore[neighbor]) {
-                        gScore[neighbor] = tentativeG;
-                        const f = tentativeG + (heuristic[neighbor] || 0);
-                        fScore[neighbor] = f;
-
-                        if (!(neighbor in parent)) {
-                            parent[neighbor] = current;
-                            treeEdges.push([current, neighbor]);
-                        }
-                        pq.push(f, [neighbor, [...path, neighbor]]);
-
-                        // Add neighbor to opened list
-                        if (!opened.includes(neighbor)) {
-                            opened.push(neighbor);
-                        }
-
-                        // Step: add neighbor to frontier
-                        steps.push(new SearchStep({
-                            stepNumber,
-                            currentNode: neighbor,
-                            action: 'add_to_frontier',
-                            pathSoFar: [...path, neighbor],
-                            visited: [...closed],
-                            frontier: [...opened],
-                            parent: { ...parent },
-                            treeEdges: treeEdges.map(e => [...e]),
-                            g_score: { ...gScore },
-                            f_score: { ...fScore },
-                            edge_weight: weight
-                        }));
-                        stepNumber++;
-                    }
-                }
-            }
         }
 
+        // Goal not found
         return this._buildResult({
             path: [],
             visited,
             success: false,
             parent,
             treeEdges,
+            costs: gScore,
             steps
         });
     }
 }
-

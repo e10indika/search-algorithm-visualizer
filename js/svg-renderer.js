@@ -35,9 +35,9 @@ export class SVGRenderer {
     }
 
     /**
-     * Draw a node (circle with label)
+     * Draw a node (circle with label and optional heuristic)
      */
-    static drawNode(svg, x, y, label, nodeClass = 'node-circle', radius = 25) {
+    static drawNode(svg, x, y, label, nodeClass = 'node-circle', radius = 25, heuristic = null) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('data-node', label);
 
@@ -57,6 +57,20 @@ export class SVGRenderer {
 
         group.appendChild(circle);
         group.appendChild(text);
+
+        // Add heuristic value if provided
+        if (heuristic !== null && heuristic !== undefined) {
+            const heuristicText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            heuristicText.setAttribute('x', x);
+            heuristicText.setAttribute('y', y + radius + 15);
+            heuristicText.setAttribute('class', 'node-heuristic');
+            heuristicText.setAttribute('font-size', '11');
+            heuristicText.setAttribute('fill', '#0066cc');
+            heuristicText.setAttribute('text-anchor', 'middle');
+            heuristicText.textContent = `h:${heuristic}`;
+            group.appendChild(heuristicText);
+        }
+
         svg.appendChild(group);
 
         return group;
@@ -147,7 +161,7 @@ export class SVGRenderer {
             const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             infoText.setAttribute('x', x);
             infoText.setAttribute('y', y + radius + 15);
-            infoText.setAttribute('class', 'tree-label');
+            infoText.setAttribute('class', 'tree-label tree-info-text');
             infoText.setAttribute('font-size', '10');
             infoText.setAttribute('fill', '#666');
             infoText.textContent = info;
@@ -159,9 +173,11 @@ export class SVGRenderer {
     }
 
     /**
-     * Draw a tree link (parent to child)
+     * Draw a tree link (parent to child) with optional weight
      */
-    static drawTreeLink(svg, x1, y1, x2, y2, linkClass = 'tree-link') {
+    static drawTreeLink(svg, x1, y1, x2, y2, weight = null, linkClass = 'tree-link') {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('x1', x1);
         line.setAttribute('y1', y1 + 20);
@@ -170,8 +186,36 @@ export class SVGRenderer {
         line.setAttribute('class', linkClass);
         line.setAttribute('data-link', `${x1},${y1}-${x2},${y2}`);
 
-        svg.insertBefore(line, svg.firstChild);
-        return line;
+        group.appendChild(line);
+
+        // Add weight label if provided
+        if (weight !== null && weight !== undefined) {
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + 20 + y2 - 20) / 2;
+
+            const weightBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            weightBg.setAttribute('cx', midX);
+            weightBg.setAttribute('cy', midY);
+            weightBg.setAttribute('r', '10');
+            weightBg.setAttribute('fill', 'white');
+            weightBg.setAttribute('stroke', '#999');
+            weightBg.setAttribute('stroke-width', '1');
+
+            const weightText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            weightText.setAttribute('x', midX);
+            weightText.setAttribute('y', midY + 4);
+            weightText.setAttribute('class', 'tree-weight-label');
+            weightText.setAttribute('font-size', '10');
+            weightText.setAttribute('fill', '#333');
+            weightText.setAttribute('text-anchor', 'middle');
+            weightText.textContent = weight;
+
+            group.appendChild(weightBg);
+            group.appendChild(weightText);
+        }
+
+        svg.insertBefore(group, svg.firstChild);
+        return group;
     }
 
     /**

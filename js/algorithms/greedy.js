@@ -18,72 +18,86 @@ export class GreedyBestFirstSearch extends BaseSearchAlgorithm {
         const heuristic = options.heuristic || {};
 
         const { visited, visitedSet, parent, treeEdges } = this._initializeSearch(start);
+
+        // Start node is at depth 0
+        const startId = `${start}-0`;
+
+        // Priority queue stores [h_score, node_label, node_id, path, depth]
         const pq = new PriorityQueue();
-        pq.push(heuristic[start] || 0, [start, [start]]);
+        pq.push(heuristic[start] || 0, [start, startId, [start], 0]);
 
         const steps = [];
         let stepNumber = 0;
 
-        // Track opened (frontier) and closed (visited) lists
-        const opened = [start];
-        const closed = [];
-
-        // Initial step
-        steps.push(new SearchStep({
-            stepNumber,
-            currentNode: start,
-            action: 'initialize',
-            pathSoFar: [start],
-            visited: [],
-            frontier: [...opened],
-            parent: { ...parent },
-            treeEdges: [],
-            heuristic_value: heuristic[start] || 0
-        }));
-        stepNumber++;
+        // Track opened/closed with node IDs
+        const openedIds = [startId];
+        const closedIds = [];
 
         while (!pq.isEmpty()) {
-            const [current, path] = pq.pop();
+            const [current, currentId, path, depth] = pq.pop();
 
-            if (visitedSet.has(current)) {
-                continue;
-            }
-
-            // Remove current from opened list and add to closed list
-            const openedIndex = opened.indexOf(current);
+            // Move current from opened to closed
+            const openedIndex = openedIds.indexOf(currentId);
             if (openedIndex !== -1) {
-                opened.splice(openedIndex, 1);
+                openedIds.splice(openedIndex, 1);
             }
-            if (!closed.includes(current)) {
-                closed.push(current);
+            if (!closedIds.includes(currentId)) {
+                closedIds.push(currentId);
             }
 
-            visitedSet.add(current);
-            visited.push(current);
+            // Add current to visited if not already there
+            if (!visited.includes(current)) {
+                visited.push(current);
+            }
 
-            // Step: visiting current node
+            // Explore neighbors at depth + 1
+            const neighborDepth = depth + 1;
+            const neighbors = this.graph[current] || [];
+
+            for (const neighbor of neighbors) {
+                if (!visitedSet.has(neighbor)) {
+                    const h = heuristic[neighbor] || 0;
+
+                    visitedSet.add(neighbor);
+                    parent[neighbor] = current;
+                    treeEdges.push([current, neighbor]);
+
+                    // Generate node ID with path format: parentPath#node-depth
+                    const pathStr = path.join('');
+                    const neighborId = `${pathStr}#${neighbor}-${neighborDepth}`;
+                    pq.push(h, [neighbor, neighborId, [...path, neighbor], neighborDepth]);
+
+                    // Add to opened list
+                    openedIds.push(neighborId);
+                }
+            }
+
+            // Update frontier to reflect current queue
+            const frontierNodeIds = [...openedIds];
+
+            // Record step with node IDs
             steps.push(new SearchStep({
                 stepNumber,
                 currentNode: current,
                 action: 'visit',
                 pathSoFar: [...path],
-                visited: [...closed],
-                frontier: [...opened],
+                visited: [...closedIds],
+                frontier: frontierNodeIds,
                 parent: { ...parent },
                 treeEdges: treeEdges.map(e => [...e]),
                 heuristic_value: heuristic[current] || 0
             }));
             stepNumber++;
 
+            // Check if goal found
             if (current === goal) {
-                // Step: goal found
                 steps.push(new SearchStep({
                     stepNumber,
                     currentNode: current,
                     action: 'goal_found',
                     pathSoFar: [...path],
-                    visited: [...closed],
-                    frontier: [...opened],
+                    visited: [...closedIds],
+                    frontier: frontierNodeIds,
                     parent: { ...parent },
                     treeEdges: treeEdges.map(e => [...e])
                 }));
@@ -97,40 +111,9 @@ export class GreedyBestFirstSearch extends BaseSearchAlgorithm {
                     steps
                 });
             }
-
-            const neighbors = this.graph[current] || [];
-            for (const neighbor of neighbors) {
-                if (!visitedSet.has(neighbor)) {
-                    const h = heuristic[neighbor] || 0;
-
-                    if (!(neighbor in parent)) {
-                        parent[neighbor] = current;
-                        treeEdges.push([current, neighbor]);
-                    }
-                    pq.push(h, [neighbor, [...path, neighbor]]);
-
-                    // Add neighbor to opened list
-                    if (!opened.includes(neighbor)) {
-                        opened.push(neighbor);
-                    }
-
-                    // Step: add neighbor to frontier
-                    steps.push(new SearchStep({
-                        stepNumber,
-                        currentNode: neighbor,
-                        action: 'add_to_frontier',
-                        pathSoFar: [...path, neighbor],
-                        visited: [...closed],
-                        frontier: [...opened],
-                        parent: { ...parent },
-                        treeEdges: treeEdges.map(e => [...e]),
-                        heuristic_value: h
-                    }));
-                    stepNumber++;
-                }
-            }
         }
 
+        // Goal not found
         return this._buildResult({
             path: [],
             visited,
@@ -141,4 +124,3 @@ export class GreedyBestFirstSearch extends BaseSearchAlgorithm {
         });
     }
 }
-

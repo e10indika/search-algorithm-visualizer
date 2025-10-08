@@ -87,7 +87,7 @@ export class AnimationController {
         const { statusDiv, result, graph } = this.ctx;
 
         statusDiv.innerHTML = `✅ <strong>Success!</strong> Path found: ${result.path.join(' → ')}`;
-        statusDiv.style.background = '#c8e6c9';
+        statusDiv.classList.add('status-success');
 
         UIBuilder.displayResults(result);
         this.addLegendAndInfo(graph, result);
@@ -109,15 +109,12 @@ export class AnimationController {
         const path = new Set(result.path || []);
         const nodes = Object.keys(graph);
         const adjList = document.createElement('div');
-        adjList.style.marginTop = '20px';
-        adjList.style.padding = '15px';
-        adjList.style.background = '#f8f9fa';
-        adjList.style.borderRadius = '8px';
-        adjList.innerHTML = '<h4>Adjacency List</h4><ul style="columns: 2; margin-top: 10px;">';
+        adjList.className = 'adjacency-list';
+        adjList.innerHTML = '<h4>Adjacency List</h4><ul>';
 
         nodes.forEach(node => {
-            const className = path.has(node) ? 'style="color: #ffa500; font-weight: bold;"' : '';
-            adjList.innerHTML += `<li ${className}><strong>${node}:</strong> [${graph[node].join(', ')}]</li>`;
+            const className = path.has(node) ? ' class="path-node"' : '';
+            adjList.innerHTML += `<li${className}><strong>${node}:</strong> [${graph[node].join(', ')}]</li>`;
         });
 
         adjList.innerHTML += '</ul>';
@@ -125,15 +122,13 @@ export class AnimationController {
 
         // Add tree legend
         const treeLegend = document.createElement('div');
-        treeLegend.className = 'tree-info';
-        treeLegend.style.marginTop = '15px';
+        treeLegend.className = 'tree-legend';
         treeLegend.innerHTML = `
             <h4>State Space Tree Legend</h4>
-            <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+            <p>
                 <strong>Real-time Exploration:</strong> Nodes appear as they are discovered during traversal.
             </p>
         `;
         dom.treeContainer.appendChild(treeLegend);
     }
 }
-

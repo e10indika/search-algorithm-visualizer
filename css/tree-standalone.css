@@ -1,0 +1,108 @@
+/* ============================================
+   Standalone Tree View - Stylesheet
+   ============================================ */
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-width: 95vw;
+    overflow: auto;
+}
+
+h1 {
+    text-align: center;
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+svg {
+    display: block;
+    margin: 0 auto;
+}
+
+.tree-node {
+    fill: #fff;
+    stroke: #999;
+    stroke-width: 2;
+    transition: all 0.3s;
+}
+
+.tree-node.start {
+    fill: #FFD700;
+    stroke: #FFA500;
+    stroke-width: 3;
+}
+
+.tree-node.goal {
+    fill: #90EE90;
+    stroke: #4CAF50;
+    stroke-width: 3;
+}
+
+.tree-node.visited {
+    fill: #bc89ad;
+    stroke: #2196F3;
+    stroke-width: 2;
+}
+
+.tree-node.path {
+    fill: #4CAF50;
+    stroke: #2E7D32;
+    stroke-width: 3;
+}
+
+.tree-node.current {
+    fill: #FF6B6B;
+    stroke: #C92A2A;
+    stroke-width: 3;
+}
+
+.tree-node.opened {
+    stroke: #1976D2;
+    stroke-width: 4;
+    fill: #77a6d5;
+}
+
+.tree-link {
+    stroke: #ccc;
+    stroke-width: 2;
+    fill: none;
+}
+
+.tree-link.path {
+    stroke: #4CAF50;
+    stroke-width: 4;
+}
+
+.tree-label {
+    fill: #333;
+    font-size: 14px;
+    font-weight: bold;
+    text-anchor: middle;
+}
+
+.tree-info-text {
+    fill: #666;
+    font-size: 10px;
+    text-anchor: middle;
+}
+
+.tree-weight-label {
+    fill: #333;
+    font-size: 10px;
+    text-anchor: middle;
+}
+

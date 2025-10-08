@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Algorithms Visualizer</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 <div class="container">
@@ -37,7 +37,7 @@
                 <label for="heuristic-input">Heuristics (JSON, optional):</label>
                 <textarea id="heuristic-input" rows="3" placeholder='{"A": 5, "B": 4, "C": 3, "D": 2, "E": 2, "F": 0}'></textarea>
             </div>
-            <div class="input-col" id="predefined-graph-col" style="display: none;">
+            <div class="input-col hidden" id="predefined-graph-col">
                 <h3>Predefined Examples</h3>
                 <label for="example-graph">Select Example:</label>
                 <select id="example-graph">
@@ -46,7 +46,7 @@
                     <option value="complex">Complex Graph (10 nodes)</option>
                     <option value="tree">Tree Structure (10 nodes)</option>
                 </select>
-                <div id="example-preview" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                <div id="example-preview" class="hidden">
                     <h4 style="color: #667eea; margin-bottom: 10px;">📋 Preview:</h4>
                     <pre id="example-preview-content" style="font-size: 0.85em; overflow: auto; max-height: 300px; background: white; padding: 10px; border-radius: 5px;"></pre>
                 </div>
@@ -76,17 +76,28 @@
             <div class="visualization-col">
                 <h3>State Space Graph</h3>
                 <div id="graph-container" class="viz-panel"></div>
-               <!-- <div id="opened-nodes-graph" class="node-list">
-                    <h4>Opened Nodes</h4>
-                    <ul id="opened-list-graph"></ul>
-                </div>
-                <div id="closed-nodes-graph" class="node-list">
-                    <h4>Closed Nodes</h4>
-                    <ul id="closed-list-graph"></ul>
-                </div>-->
             </div>
             <div class="visualization-col">
-                <h3>Search Tree</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin-bottom: 0;">Search Tree</h3>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em; cursor: pointer;">
+                            <input type="checkbox" id="show-tree-weights" checked>
+                            <span>Weights</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em; cursor: pointer;">
+                            <input type="checkbox" id="show-tree-heuristics" checked>
+                            <span>Heuristics</span>
+                        </label>
+                        <button id="open-tree-window" class="btn-icon" title="Open tree in new window">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
                 <div id="state-space-tree-container" class="viz-panel tree-container"></div>
                 <div id="opened-nodes-tree" class="node-list">
                     <h4>Opened Nodes</h4>
@@ -108,6 +119,8 @@
                 <select id="graph-algorithm">
                     <option value="bfs">Breadth-First Search (BFS)</option>
                     <option value="dfs">Depth-First Search (DFS)</option>
+                    <option value="ucs">Uniform Cost Search (UCS)</option>
+                    <option value="ids">Iterative Deepening Search (IDS)</option>
                     <option value="dijkstra">Dijkstra's Algorithm</option>
                     <option value="astar">A* Search</option>
                     <option value="greedy">Greedy Best-First Search</option>
@@ -139,7 +152,6 @@
         <div class="action-buttons">
             <button id="start-search" class="btn btn-primary">Start Search</button>
             <button id="clear-results" class="btn btn-secondary">Clear Results</button>
-            <button id="manual-action" class="btn btn-warning" style="display:none;">Next Step</button>
         </div>
     </section>
 

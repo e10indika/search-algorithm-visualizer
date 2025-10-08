@@ -1,213 +1,182 @@
 /**
  * Tree Visualizer
- * Generates and visualizes complete state space trees
+ * Generates and visualizes complete state space trees with zoom and pan controls
  */
 
 import {SVGRenderer} from './svg-renderer.js';
 
 export class TreeVisualizer {
+    static CONSTANTS = {
+        MIN_WIDTH: 800,
+        MIN_HEIGHT: 500,
+        NODE_SPACING: 60,
+        LEVEL_HEIGHT: 80,
+        VERTICAL_PADDING: 40,
+        LEVEL_SPACING: 100,
+        ZOOM_IN_FACTOR: 1.2,
+        ZOOM_OUT_FACTOR: 0.8,
+        POSITION_TOLERANCE: 2
+    };
+
     constructor(container) {
         this.container = container;
         this.svg = null;
         this.treeData = null;
         this.nodePositions = new Map();
+        this.dragState = {
+            isDragging: false,
+            start: {x: 0, y: 0},
+            viewBoxStart: []
+        };
+        this.showWeights = true;
+        this.showHeuristics = true;
     }
 
-    /**
-     * Generate and build the complete state space tree
-     */
-    buildTree(graphData, startNode, maxDepth = 4, goalNodes = []) {
-        // Clear container
-        this.container.innerHTML = '';
+    buildTree(graphData, startNode, maxDepth = 4, goalNodes = [], options = {}) {
+        this.clear();
 
-        // Generate tree structure
+        this.weights = options.weights || {};
+        this.heuristic = options.heuristic || {};
+        this.costs = options.costs || {};
+        this.startNode = startNode;
+        this.goalNodes = goalNodes;
+        this.showWeights = options.showWeights !== undefined ? options.showWeights : true;
+        this.showHeuristics = options.showHeuristics !== undefined ? options.showHeuristics : true;
+
         this.treeData = this.generateSearchTree(graphData.graph, startNode, maxDepth, goalNodes);
-
-        // Calculate SVG dimensions based on tree size
         const {width, height} = this.calculateTreeDimensions(this.treeData, maxDepth);
 
-        // Create SVG
         this.svg = SVGRenderer.createSVG(width, height);
         this.container.appendChild(this.svg);
         this.addZoomControls();
 
-        // Calculate node positions
         this.computeSubtreeSizes(this.treeData);
-        this.calculateTreeLayout(this.treeData, width / 2, 40, width, 0);
-
-        // Draw tree
+        this.calculateTreeLayout(this.treeData, width / 2, TreeVisualizer.CONSTANTS.VERTICAL_PADDING, width);
         this.drawTree(this.treeData);
 
         return this.svg;
     }
 
-    /**
-     * Add zoom in/out buttons to the container
-     */
     addZoomControls() {
-        let isDragging = false;
-        let dragStart = {x: 0, y: 0};
-        let viewBoxStart = [0, 0, 0, 0];
-
-        this.container.addEventListener('mouseenter', () => {
-            if (this.container.querySelector('.zoom-controls')) return;
-            const zoomControls = document.createElement('div');
-            zoomControls.className = 'zoom-controls';
-            zoomControls.style.display = 'flex';
-            zoomControls.style.gap = '8px';
-            zoomControls.style.marginBottom = '8px';
-            zoomControls.style.position = 'absolute';
-            zoomControls.style.top = '8px';
-            zoomControls.style.right = '8px';
-            zoomControls.style.zIndex = '10';
-
-            const zoomInBtn = document.createElement('button');
-            zoomInBtn.textContent = '+';
-            zoomInBtn.title = 'Zoom In';
-            zoomInBtn.onclick = (e) => {
-                this.zoomSVG(1.2, e);
-            };
-
-            const zoomOutBtn = document.createElement('button');
-            zoomOutBtn.textContent = '−';
-            zoomOutBtn.title = 'Zoom Out';
-            zoomOutBtn.onclick = (e) => {
-                this.zoomSVG(0.8, e);
-            };
-
-            zoomControls.appendChild(zoomInBtn);
-            zoomControls.appendChild(zoomOutBtn);
-            this.container.prepend(zoomControls);
-
-            // Add drag support
-            if (this.svg) {
-                this.svg.style.cursor = 'grab';
-                this.svg.onmousedown = (e) => {
-                    isDragging = true;
-                    this.svg.style.cursor = 'grabbing';
-                    dragStart = {x: e.clientX, y: e.clientY};
-                    const viewBox = this.svg.getAttribute('viewBox') || `0 0 ${this.svg.width.baseVal.value} ${this.svg.height.baseVal.value}`;
-                    viewBoxStart = viewBox.split(' ').map(Number);
-                    e.preventDefault();
-                };
-                window.onmousemove = (e) => {
-                    if (!isDragging) return;
-                    const dx = e.clientX - dragStart.x;
-                    const dy = e.clientY - dragStart.y;
-                    // Move only if zoomed in (viewBox smaller than SVG)
-                    if (viewBoxStart.length === 4) {
-                        let [x, y, w, h] = viewBoxStart;
-                        const scaleX = w / this.svg.width.baseVal.value;
-                        const scaleY = h / this.svg.height.baseVal.value;
-                        let newX = x - dx * scaleX;
-                        let newY = y - dy * scaleY;
-                        // Prevent moving out of bounds
-                        newX = Math.max(0, Math.min(newX, this.svg.width.baseVal.value - w));
-                        newY = Math.max(0, Math.min(newY, this.svg.height.baseVal.value - h));
-                        this.svg.setAttribute('viewBox', `${newX} ${newY} ${w} ${h}`);
-                    }
-                };
-                window.onmouseup = () => {
-                    isDragging = false;
-                    if (this.svg) this.svg.style.cursor = 'grab';
-                };
-            }
-        });
-
-        this.container.addEventListener('mouseleave', () => {
-            const controls = this.container.querySelector('.zoom-controls');
-            if (controls) controls.remove();
-            if (this.svg) {
-                this.svg.onmousedown = null;
-                window.onmousemove = null;
-                window.onmouseup = null;
-                this.svg.style.cursor = '';
-            }
-        });
+        this.container.addEventListener('mouseenter', () => this.showZoomControls());
+        this.container.addEventListener('mouseleave', () => this.hideZoomControls());
     }
 
-    /**
-     * Zoom the SVG by scaling the viewBox
-     */
-    zoomSVG(factor) {
+    showZoomControls() {
+        if (this.container.querySelector('.zoom-controls')) return;
+
+        const zoomControls = this.createZoomControlsElement();
+        this.container.prepend(zoomControls);
+        this.setupDragPan();
+    }
+
+    createZoomControlsElement() {
+        const zoomControls = document.createElement('div');
+        zoomControls.className = 'zoom-controls';
+
+        const buttons = [
+            {text: '+', title: 'Zoom In', factor: TreeVisualizer.CONSTANTS.ZOOM_IN_FACTOR},
+            {text: '−', title: 'Zoom Out', factor: TreeVisualizer.CONSTANTS.ZOOM_OUT_FACTOR}
+        ];
+
+        buttons.forEach(({text, title, factor}) => {
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.title = title;
+            btn.onclick = () => this.zoom(factor);
+            zoomControls.appendChild(btn);
+        });
+
+        return zoomControls;
+    }
+
+    hideZoomControls() {
+        this.container.querySelector('.zoom-controls')?.remove();
+        this.cleanupDragPan();
+    }
+
+    setupDragPan() {
         if (!this.svg) return;
-        const viewBox = this.svg.getAttribute('viewBox') || `0 0 ${this.svg.width.baseVal.value} ${this.svg.height.baseVal.value}`;
-        const [x, y, w, h] = viewBox.split(' ').map(Number);
+
+        this.svg.style.cursor = 'grab';
+        this.svg.onmousedown = (e) => this.handleDragStart(e);
+        window.onmousemove = (e) => this.handleDragMove(e);
+        window.onmouseup = () => this.handleDragEnd();
+    }
+
+    cleanupDragPan() {
+        if (this.svg) {
+            this.svg.onmousedown = null;
+            window.onmousemove = null;
+            window.onmouseup = null;
+            this.svg.style.cursor = '';
+        }
+    }
+
+    handleDragStart(e) {
+        this.dragState.isDragging = true;
+        this.svg.style.cursor = 'grabbing';
+        this.dragState.start = {x: e.clientX, y: e.clientY};
+
+        const viewBox = this.getViewBox();
+        this.dragState.viewBoxStart = viewBox.split(' ').map(Number);
+        e.preventDefault();
+    }
+
+    handleDragMove(e) {
+        if (!this.dragState.isDragging) return;
+
+        const dx = e.clientX - this.dragState.start.x;
+        const dy = e.clientY - this.dragState.start.y;
+        const [x, y, w, h] = this.dragState.viewBoxStart;
+
+        const scaleX = w / this.svg.width.baseVal.value;
+        const scaleY = h / this.svg.height.baseVal.value;
+        const newX = Math.max(0, Math.min(x - dx * scaleX, this.svg.width.baseVal.value - w));
+        const newY = Math.max(0, Math.min(y - dy * scaleY, this.svg.height.baseVal.value - h));
+
+        this.svg.setAttribute('viewBox', `${newX} ${newY} ${w} ${h}`);
+    }
+
+    handleDragEnd() {
+        this.dragState.isDragging = false;
+        if (this.svg) this.svg.style.cursor = 'grab';
+    }
+
+    getViewBox() {
+        return this.svg.getAttribute('viewBox') ||
+            `0 0 ${this.svg.width.baseVal.value} ${this.svg.height.baseVal.value}`;
+    }
+
+    zoom(factor) {
+        if (!this.svg) return;
+
+        const [x, y, w, h] = this.getViewBox().split(' ').map(Number);
         const cx = x + w / 2;
         const cy = y + h / 2;
         const newW = w / factor;
         const newH = h / factor;
+
         this.svg.setAttribute('viewBox', `${cx - newW / 2} ${cy - newH / 2} ${newW} ${newH}`);
     }
 
-    /**
-     * Generate state space graph
-     */
     generateSearchTree(graph, startNode, maxDepth, goalNodes = []) {
-        const root = {
-            id: `${startNode}-0`, label: startNode, path: [startNode], depth: 0, children: []
-        };
-
+        const root = this.createTreeNode(startNode, 0, [startNode]);
         const queue = [root];
-        let goalFound = false;
 
-        while (queue.length > 0 && !goalFound) { // Stop when goal is found
+        while (queue.length > 0) {
             const currentNode = queue.shift();
 
-            // Check if current node is a goal node
-            if (goalNodes.includes(currentNode.label)) {
-                console.log(`🎯 Goal node "${currentNode.label}" found in state space tree!`);
-                // goalFound = true;
-                continue; // Don't expand goal nodes
-            }
-
-            // Stop expanding if we've reached max depth
-            if (currentNode.depth >= maxDepth) {
+            if (goalNodes.includes(currentNode.label) || currentNode.depth >= maxDepth) {
                 continue;
             }
 
-            const currentLabel = currentNode.label;
-            const neighbors = graph[currentLabel] || [];
-
+            const neighbors = graph[currentNode.label] || [];
             neighbors.forEach(neighbor => {
-                // Skip if neighbor is already in the path (prevent backward/cyclic nodes)
-                const lastNode = currentNode.path[currentNode.path.length - 1];
-                if (!(lastNode && lastNode.label && lastNode.label.endsWith('(loop)')) && currentNode.path.includes(neighbor)) {
-                    // Add neighbor to path and label as loop node
-                    const childDepth = currentNode.depth + 1;
-                    const loopChild = {
-                        id: `${currentNode.path.join('')}#${neighbor}-loop-${childDepth}`,
-                        label: `${neighbor} (loop)`,
-                        path: [...currentNode.path, neighbor],
-                        depth: childDepth,
-                        parent: currentNode,
-                        children: []
-                    };
-                    currentNode.children.push(loopChild);
-                    console.log(`🔁 Loop node "${loopChild.label}" added (Path: ${loopChild.path.join('→')})`);
-                    return;
-                }
-
-                // Create child node with depth-based ID
-                const childPath = [...currentNode.path, neighbor];
-                const childDepth = currentNode.depth + 1;
-                const childId = `${currentNode.path.join('')}#${neighbor}-${childDepth}`;
-                console.log(`currentNode Path: `, currentNode.path, 'Child Path:', childPath, `Child ID: ${childId}`);
-
-                const child = {
-                    id: childId,
-                    label: neighbor,
-                    path: childPath,
-                    depth: childDepth,
-                    parent: currentNode,
-                    children: []
-                };
-
+                const child = this.createChildNode(currentNode, neighbor);
                 currentNode.children.push(child);
-                console.log(`➕ Added node "${child.label}" at depth ${child.depth} (Path: ${child.path.join('→')})`);
 
-                // Only add to queue if goal hasn't been found yet
-                if (!goalFound) {
+                if (!child.label.includes('(loop)')) {
                     queue.push(child);
                 }
             });
@@ -216,292 +185,363 @@ export class TreeVisualizer {
         return root;
     }
 
-    /**
-     * Calculate tree dimensions
-     */
-    calculateTreeDimensions(tree, maxDepth) {
-        const leafCount = this.countLeaves(tree);
-        const width = Math.max(800, leafCount * 60);
-        const height = Math.max(500, (maxDepth + 1) * 100);
-        return {width, height};
+    createTreeNode(label, depth, path) {
+        return {
+            id: `${label}-${depth}`,
+            label,
+            path,
+            depth,
+            children: []
+        };
     }
 
-    /**
-     * Count leaf nodes
-     */
+    createChildNode(parent, neighbor) {
+        const childDepth = parent.depth + 1;
+        const isLoop = parent.path.includes(neighbor);
+        const childPath = [...parent.path, neighbor];
+
+        return {
+            id: `${parent.path.join('')}#${neighbor}-${isLoop ? 'loop-' : ''}${childDepth}`,
+            label: isLoop ? `${neighbor} (loop)` : neighbor,
+            path: childPath,
+            depth: childDepth,
+            parent,
+            children: []
+        };
+    }
+
+    calculateTreeDimensions(tree, maxDepth) {
+        const leafCount = this.countLeaves(tree);
+        return {
+            width: Math.max(TreeVisualizer.CONSTANTS.MIN_WIDTH, leafCount * TreeVisualizer.CONSTANTS.NODE_SPACING),
+            height: Math.max(TreeVisualizer.CONSTANTS.MIN_HEIGHT, (maxDepth + 1) * TreeVisualizer.CONSTANTS.LEVEL_SPACING)
+        };
+    }
+
     countLeaves(node) {
-        if (!node.children || node.children.length === 0) {
-            return 1;
-        }
+        if (!node.children?.length) return 1;
         return node.children.reduce((sum, child) => sum + this.countLeaves(child), 0);
     }
 
-    /**
-     * Calculate tree layout positions (using Reingold-Tilford algorithm simplified)
-     */
-    calculateTreeLayoutOld(node, x, y, width, index) {
-        if (!node) return;
-
-        // Store position
-        this.nodePositions.set(node.id, {x, y, label: node.label});
-
-        const childCount = node.children.length;
-        if (childCount === 0) return;
-
-        const childWidth = width / childCount;
-        const childY = y + 80;
-
-        node.children.forEach((child, i) => {
-            // Position children from leftmost, evenly spaced
-            const childX = x - width / 2 + childWidth * (i + 0.5);
-            this.calculateTreeLayout(child, childX, childY, childWidth, i);
-        });
-
-        // const childWidth = width / childCount;
-        // const childY = y + 80;
-        //
-        // node.children.forEach((child, i) => {
-        //     const childX = x - width / 2 + childWidth * (i + 0.5);
-        //     this.calculateTreeLayout(child, childX, childY, childWidth, i);
-        // });
-    }
-
-// Step 1: Compute subtree sizes (number of leaves under each node)
     computeSubtreeSizes(node) {
-        if (!node.children || node.children.length === 0) {
+        if (!node.children?.length) {
             node.subtreeSize = 1;
             return 1;
         }
-        let size = 0;
-        for (const child of node.children) {
-            size += this.computeSubtreeSizes(child);
-        }
-        node.subtreeSize = size;
-        return size;
+        node.subtreeSize = node.children.reduce((sum, child) => sum + this.computeSubtreeSizes(child), 0);
+        return node.subtreeSize;
     }
 
-// Step 2: Layout calculation using subtree sizes
     calculateTreeLayout(node, x, y, totalWidth) {
         if (!node) return;
 
         this.nodePositions.set(node.id, {x, y, label: node.label});
 
-        if (!node.children || node.children.length === 0) return;
+        if (!node.children?.length) return;
 
-        const totalSubtreeSize = node.children.reduce((sum, c) => sum + c.subtreeSize, 0);
-        const spacing = totalWidth / totalSubtreeSize;
+        const spacing = totalWidth / node.children.reduce((sum, c) => sum + c.subtreeSize, 0);
         let currentX = x - totalWidth / 2;
+        const childY = y + TreeVisualizer.CONSTANTS.LEVEL_HEIGHT;
 
-        const childY = y + 80;
-
-        for (const child of node.children) {
+        node.children.forEach(child => {
             const childWidth = spacing * child.subtreeSize;
             const childCenterX = currentX + childWidth / 2;
-
             this.calculateTreeLayout(child, childCenterX, childY, childWidth);
             currentX += childWidth;
-        }
+        });
     }
 
-    /**
-     * Draw the complete tree
-     */
-    drawTree(node) {
+    drawTree(node, parentLabel = null) {
         if (!node) return;
 
         const pos = this.nodePositions.get(node.id);
         if (!pos) return;
 
-        // Draw links to children first
+        // Draw links to children with weights
         node.children.forEach(child => {
             const childPos = this.nodePositions.get(child.id);
             if (childPos) {
-                SVGRenderer.drawTreeLink(this.svg, pos.x, pos.y, childPos.x, childPos.y);
+                // Get the weight for this edge
+                const childLabel = child.label.replace(' (loop)', '');
+                const weight = this.getEdgeWeight(node.label, childLabel);
+                SVGRenderer.drawTreeLink(this.svg, pos.x, pos.y, childPos.x, childPos.y, weight);
             }
         });
 
-        // Draw node - use node.id for data-node attribute so we can find it later
-        const pathStr = node.path.join('→');
-        const nodeGroup = SVGRenderer.drawTreeNode(this.svg, pos.x, pos.y, node.label, `d:${node.depth}`, 'tree-node');
-        // Update the data-node attribute to use the full node ID instead of just the label
+        // Calculate node information to display
+        const nodeInfo = this.getNodeInfo(node);
+
+        // Determine initial node class based on whether it's start or goal
+        let nodeClass = 'tree-node';
+        if (node.label === this.startNode) {
+            nodeClass = 'tree-node start';
+        } else if (this.goalNodes && this.goalNodes.includes(node.label)) {
+            nodeClass = 'tree-node goal';
+        }
+
+        const nodeGroup = SVGRenderer.drawTreeNode(
+            this.svg,
+            pos.x,
+            pos.y,
+            node.label,
+            nodeInfo,
+            nodeClass
+        );
         nodeGroup.setAttribute('data-node', node.id);
 
-        // Recursively draw children
-        node.children.forEach(child => this.drawTree(child));
+        node.children.forEach(child => this.drawTree(child, node.label));
     }
 
-    /**
-     * Update tree node visualization
-     */
-    updateTreeNode(nodeId, className) {
-        const node = this.svg.querySelector(`[data-node="${nodeId}"] circle`);
-        if (node) {
-            node.setAttribute('class', className);
+    getEdgeWeight(fromNode, toNode) {
+        if (!this.weights || Object.keys(this.weights).length === 0) {
+            return null;
         }
+
+        const weight = this.weights[`${fromNode},${toNode}`] ||
+            this.weights[`${toNode},${fromNode}`] ||
+            1;
+        return weight;
     }
 
-    /**
-     * Highlight node by label at specific depth
-     */
-    highlightNodeByLabel(label, depth = null, className = 'tree-node current') {
-        // Find matching nodes in positions map
-        for (const [id, pos] of this.nodePositions.entries()) {
-            if (pos.label === label) {
-                if (depth === null || id.includes(`-${depth}`)) {
-                    this.updateTreeNode(id.split('-')[0], className);
-                }
+    getNodeInfo(node) {
+        const infoParts = [];
+
+        // Add depth
+        infoParts.push(`d:${node.depth}`);
+
+        // Calculate cumulative cost (g-value) from path if weights are available
+        let cumulativeCost = 0;
+        if (this.weights && Object.keys(this.weights).length > 0 && node.path.length > 1) {
+            for (let i = 0; i < node.path.length - 1; i++) {
+                const from = node.path[i];
+                const to = node.path[i + 1];
+                const weight = this.weights[`${from},${to}`] ||
+                    this.weights[`${to},${from}`] || 1;
+                cumulativeCost += weight;
+            }
+            infoParts.push(`g:${cumulativeCost}`);
+        } else if (this.costs && node.label in this.costs) {
+            // Fallback to costs object if available
+            cumulativeCost = this.costs[node.label];
+            infoParts.push(`g:${cumulativeCost}`);
+        }
+
+        // Add heuristic value if available
+        if (this.heuristic && node.label in this.heuristic) {
+            const hValue = this.heuristic[node.label];
+            infoParts.push(`h:${hValue}`);
+
+            // Add f value (g+h) if we have cumulative cost
+            if (cumulativeCost > 0 || node.depth === 0) {
+                const fValue = cumulativeCost + hValue;
+                infoParts.push(`f:${fValue}`);
             }
         }
+
+        return infoParts.join(' ');
     }
 
-    /**
-     * Highlight nodes in the opened list with solid blue outline
-     */
     highlightOpenedNodes(openedList) {
-        if (!openedList || !Array.isArray(openedList)) return;
+        if (!Array.isArray(openedList)) return;
 
-        // Add 'opened' class to nodes in the opened list
         openedList.forEach(nodeId => {
-            const nodeGroup = this.svg.querySelector(`[data-node="${nodeId}"]`);
-            if (nodeGroup) {
-                const circle = nodeGroup.querySelector('circle');
-                if (circle) {
-                    circle.setAttribute('class', 'tree-node opened');
-                }
-            }
+            const circle = this.svg?.querySelector(`[data-node="${nodeId}"] circle`);
+            if (circle) circle.setAttribute('class', 'tree-node opened');
         });
     }
 
-    /**
-     * Highlight nodes in the closed list
-     */
     highlightClosedNodes(closedList) {
-        if (!closedList || !Array.isArray(closedList)) return;
+        if (!Array.isArray(closedList)) return;
 
         closedList.forEach(nodeId => {
-            const nodeGroup = this.svg.querySelector(`[data-node="${nodeId}"]`);
-            if (nodeGroup) {
-                const circle = nodeGroup.querySelector('circle');
-                if (circle && !circle.classList.contains('path')) {
-                    // Remove 'opened' class if it exists and add 'visited'
-                    circle.classList.remove('opened');
-                    circle.setAttribute('class', 'tree-node visited');
-                }
+            const circle = this.svg?.querySelector(`[data-node="${nodeId}"] circle`);
+            if (circle && !circle.classList.contains('path')) {
+                circle.setAttribute('class', 'tree-node visited');
             }
         });
     }
 
-    /**
-     * Highlight path in the tree (both nodes and edges)
-     */
     highlightPath(path) {
-        if (!path || path.length === 0) return;
+        if (!path?.length) return;
 
-        console.log('🎯 Highlighting path in tree:', path);
-
-        // Find the actual path through the tree by matching the sequence
         const pathNodeIds = this.findPathInTree(path);
+        if (!pathNodeIds.length) return;
 
-        if (pathNodeIds.length === 0) {
-            console.warn('⚠️ Could not find path in tree');
-            return;
-        }
+        this.highlightPathNodes(pathNodeIds);
+        this.highlightPathEdges(pathNodeIds);
+    }
 
-        console.log('✅ Path nodes found:', pathNodeIds);
-
-        // Highlight path nodes
+    highlightPathNodes(pathNodeIds) {
         pathNodeIds.forEach(nodeId => {
-            const node = this.svg.querySelector(`[data-node="${nodeId}"] circle`);
-            if (node) {
-                node.setAttribute('class', 'tree-node path');
-            }
+            const circle = this.svg?.querySelector(`[data-node="${nodeId}"] circle`);
+            if (circle) circle.setAttribute('class', 'tree-node path');
         });
+    }
 
-        // Highlight path edges by connecting consecutive nodes in pathNodeIds
+    highlightPathEdges(pathNodeIds) {
         for (let i = 0; i < pathNodeIds.length - 1; i++) {
-            const nodeId1 = pathNodeIds[i];
-            const nodeId2 = pathNodeIds[i + 1];
-            const pos1 = this.nodePositions.get(nodeId1);
-            const pos2 = this.nodePositions.get(nodeId2);
+            const pos1 = this.nodePositions.get(pathNodeIds[i]);
+            const pos2 = this.nodePositions.get(pathNodeIds[i + 1]);
 
             if (pos1 && pos2) {
-                // Find and highlight the link between these specific positions
-                const links = this.svg.querySelectorAll('line.tree-link');
-                links.forEach(link => {
-                    const x1 = parseFloat(link.getAttribute('x1'));
-                    const y1 = parseFloat(link.getAttribute('y1'));
-                    const x2 = parseFloat(link.getAttribute('x2'));
-                    const y2 = parseFloat(link.getAttribute('y2'));
-
-                    // Check if this link connects the two positions
-                    const connects = (
-                        Math.abs(x1 - pos1.x) < 2 && Math.abs(y1 - pos1.y - 20) < 2 &&
-                        Math.abs(x2 - pos2.x) < 2 && Math.abs(y2 - pos2.y + 20) < 2
-                    );
-
-                    if (connects) {
-                        // link.classList.add('path');
-                        link.setAttribute('class', 'edge-line path');
-                    }
-                });
+                this.highlightEdgeBetweenPositions(pos1, pos2);
             }
         }
-
-        console.log('✅ Path highlighted successfully');
     }
 
-    /**
-     * Find the actual path through the tree matching the search result path
-     */
-    findPathInTree(searchPath) {
-        if (!this.treeData || !searchPath || searchPath.length === 0) return [];
+    highlightEdgeBetweenPositions(pos1, pos2) {
+        const tolerance = TreeVisualizer.CONSTANTS.POSITION_TOLERANCE;
 
-        // Start from root and traverse to find matching path
+        this.svg.querySelectorAll('line.tree-link').forEach(link => {
+            const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map(attr =>
+                parseFloat(link.getAttribute(attr))
+            );
+
+            const connects =
+                Math.abs(x1 - pos1.x) < tolerance &&
+                Math.abs(y1 - pos1.y - 20) < tolerance &&
+                Math.abs(x2 - pos2.x) < tolerance &&
+                Math.abs(y2 - pos2.y + 20) < tolerance;
+
+            if (connects) {
+                link.setAttribute('class', 'edge-line path');
+            }
+        });
+    }
+
+    findPathInTree(searchPath) {
+        if (!this.treeData || !searchPath?.length) return [];
+
         const pathNodeIds = [];
 
-        // Recursive function to find path
         const findPath = (node, targetPath, currentIndex) => {
-            if (!node) return false;
+            if (!node || node.label !== targetPath[currentIndex]) return false;
 
-            // Check if current node matches the target at this index
-            if (node.label !== targetPath[currentIndex]) {
-                return false;
-            }
-
-            // Add this node to the path
             pathNodeIds.push(node.id);
 
-            // If we've matched the entire path, we're done
-            if (currentIndex === targetPath.length - 1) {
-                return true;
-            }
+            if (currentIndex === targetPath.length - 1) return true;
 
-            // Try to find the next node in the path among children
             for (const child of node.children) {
-                if (findPath(child, targetPath, currentIndex + 1)) {
-                    return true;
-                }
+                if (findPath(child, targetPath, currentIndex + 1)) return true;
             }
 
-            // If no child matched, backtrack
             pathNodeIds.pop();
             return false;
         };
 
-        // Start the search from root
         findPath(this.treeData, searchPath, 0);
-
         return pathNodeIds;
     }
 
-    /**
-     * Clear the tree
-     */
     clear() {
-        if (this.svg) {
-            SVGRenderer.clearSVG(this.svg);
-        }
+        if (this.svg) SVGRenderer.clearSVG(this.svg);
         this.container.innerHTML = '';
         this.nodePositions.clear();
+    }
+
+    // Toggle visibility of weights on edges
+    toggleWeights(show) {
+        this.showWeights = show;
+        if (!this.svg) return;
+
+        const weightLabels = this.svg.querySelectorAll('.tree-weight-label, .tree-weight-bg');
+        weightLabels.forEach(label => {
+            label.style.display = show ? '' : 'none';
+        });
+    }
+
+    // Toggle visibility of heuristic values in node info
+    toggleHeuristics(show) {
+        this.showHeuristics = show;
+        if (!this.svg) return;
+
+        // Re-render all node info text
+        this.updateNodeInfoVisibility();
+    }
+
+    // Update node info text based on current visibility settings
+    updateNodeInfoVisibility() {
+        if (!this.svg || !this.treeData) return;
+
+        const updateNodeInfo = (node) => {
+            if (!node) return;
+
+            const nodeGroup = this.svg.querySelector(`[data-node="${node.id}"]`);
+            if (nodeGroup) {
+                const infoText = nodeGroup.querySelector('.tree-info-text');
+                if (infoText) {
+                    const newInfo = this.getNodeInfoFiltered(node);
+                    infoText.textContent = newInfo;
+                }
+            }
+
+            node.children.forEach(child => updateNodeInfo(child));
+        };
+
+        updateNodeInfo(this.treeData);
+    }
+
+    // Get filtered node info based on visibility settings
+    getNodeInfoFiltered(node) {
+        const infoParts = [];
+
+        // Add depth
+        infoParts.push(`d:${node.depth}`);
+
+        // Calculate cumulative cost (g-value) from path if weights are available
+        let cumulativeCost = 0;
+        if (this.showWeights && this.weights && Object.keys(this.weights).length > 0 && node.path.length > 1) {
+            for (let i = 0; i < node.path.length - 1; i++) {
+                const from = node.path[i];
+                const to = node.path[i + 1];
+                const weight = this.weights[`${from},${to}`] ||
+                    this.weights[`${to},${from}`] || 1;
+                cumulativeCost += weight;
+            }
+            infoParts.push(`g:${cumulativeCost}`);
+        } else if (this.showWeights && this.costs && node.label in this.costs) {
+            cumulativeCost = this.costs[node.label];
+            infoParts.push(`g:${cumulativeCost}`);
+        }
+
+        // Add heuristic value if available and enabled
+        if (this.showHeuristics && this.heuristic && node.label in this.heuristic) {
+            const hValue = this.heuristic[node.label];
+            infoParts.push(`h:${hValue}`);
+
+            // Add f value (g+h) if we have cumulative cost
+            if (this.showWeights && (cumulativeCost > 0 || node.depth === 0)) {
+                const fValue = cumulativeCost + hValue;
+                infoParts.push(`f:${fValue}`);
+            }
+        }
+
+        return infoParts.join(' ');
+    }
+
+    // Create a standalone version of the tree for opening in a new window
+    getTreeHTML() {
+        if (!this.svg) return null;
+
+        const svgClone = this.svg.cloneNode(true);
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Tree - Standalone View</title>
+    <link rel="stylesheet" href="../css/tree-standalone.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🌳 Search Tree - Standalone View</h1>
+        ${svgClone.outerHTML}
+    </div>
+</body>
+</html>
+        `;
+
+        return html;
     }
 }
