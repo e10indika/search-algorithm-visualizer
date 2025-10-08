@@ -1,112 +1,89 @@
-# Frontend JavaScript Modules
+# JavaScript Modules
 
-This directory contains the refactored modular JavaScript code for the Search Algorithms Visualizer.
+This directory contains all the JavaScript modules for the Search Algorithms Visualizer.
 
-## File Structure
-
-```
-js/
-├── main.js                    # Main entry point and initialization
-├── config.js                  # Configuration and constants
-├── state.js                   # Application state management
-├── dom.js                     # DOM elements manager
-├── api.js                     # API service for backend communication
-├── utils.js                   # Utility functions
-├── validator.js               # Graph validation
-├── svg-renderer.js            # SVG rendering utilities
-├── ui-builder.js              # UI component builders
-├── graph-builder.js           # Graph visualization builder
-├── tree-visualizer.js         # Tree visualization
-├── animation-controller.js    # Animation logic
-├── visualization-manager.js   # Visualization orchestration
-├── search-controller.js       # Search algorithm controller
-└── examples-manager.js        # Example data management
-```
-
-## Module Descriptions
+## 📁 Module Structure
 
 ### Core Modules
+- **`main.js`** - Application entry point and initialization
+- **`api.js`** - Local algorithm executor (no backend needed)
+- **`search-controller.js`** - Orchestrates search execution and visualization
+- **`dom.js`** - DOM element references and utilities
+- **`config.js`** - Application configuration
 
-- **main.js**: Application entry point, initializes the app and sets up event listeners
-- **config.js**: Contains all configuration constants (API URLs, colors, dimensions, etc.)
-- **state.js**: Manages application state using the AppState class
-- **dom.js**: Centralized DOM element references and helper methods
+### Visualization Modules
+- **`graph-builder.js`** - Builds and renders the state space graph
+- **`tree-visualizer.js`** - Builds and renders the search tree
+- **`svg-renderer.js`** - SVG rendering utilities
+- **`animation-controller.js`** - Controls animation timing
+- **`visualization-manager.js`** - Manages visualization state
 
-### Services
+### UI Modules
+- **`ui-builder.js`** - UI component builders
+- **`examples-manager.js`** - Manages predefined graph examples
+- **`validator.js`** - Input validation
+- **`utils.js`** - General utilities
+- **`state.js`** - Application state management
 
-- **api.js**: Handles all API calls to the backend (fetch examples, search, generate tree)
-- **validator.js**: Validates user inputs before processing
+### Algorithm Modules (`algorithms/`)
+- **`base.js`** - Base classes (SearchStep, SearchResult, BaseSearchAlgorithm)
+- **`bfs.js`** - Breadth-First Search
+- **`dfs.js`** - Depth-First Search
+- **`dijkstra.js`** - Dijkstra's Algorithm + PriorityQueue
+- **`astar.js`** - A* Search
+- **`greedy.js`** - Greedy Best-First Search
+- **`search-algorithms.js`** - Algorithm factory/manager
 
-### Utilities
-
-- **utils.js**: Common utility functions (sleep, SVG creation, layout calculation)
-- **svg-renderer.js**: SVG element creation and rendering functions
-
-### UI Components
-
-- **ui-builder.js**: Creates UI elements (titles, status divs, legends, controls)
-- **graph-builder.js**: Builds and renders the graph visualization
-- **tree-visualizer.js**: Builds and renders the state space tree
-
-### Controllers
-
-- **animation-controller.js**: Manages animation sequences
-- **visualization-manager.js**: Orchestrates the visualization process
-- **search-controller.js**: Controls search execution and tree generation
-- **examples-manager.js**: Loads and manages example graphs
-
-## Module Dependencies
+## 🔄 Module Dependencies
 
 ```
 main.js
-  ├── api.js (config.js)
-  ├── dom.js
-  ├── search-controller.js
-  │   ├── state.js
-  │   ├── dom.js
-  │   ├── api.js
-  │   ├── validator.js
-  │   └── visualization-manager.js
-  └── examples-manager.js
-      ├── state.js
-      ├── dom.js
-      └── api.js
-
-visualization-manager.js
-  ├── state.js
-  ├── dom.js
-  ├── utils.js
-  ├── ui-builder.js
-  ├── graph-builder.js
-  ├── tree-visualizer.js
-  └── animation-controller.js
+├── api.js
+│   └── algorithms/search-algorithms.js
+│       ├── algorithms/bfs.js
+│       ├── algorithms/dfs.js
+│       ├── algorithms/dijkstra.js
+│       ├── algorithms/astar.js
+│       └── algorithms/greedy.js
+├── search-controller.js
+│   ├── graph-builder.js
+│   ├── tree-visualizer.js
+│   └── api.js
+├── examples-manager.js
+└── dom.js
 ```
 
-## Usage
+## 🎯 Key Features
 
-The modules use ES6 import/export syntax. The HTML file loads only `main.js` as a module:
+- **ES6 Modules**: Modern JavaScript module system
+- **No Dependencies**: Pure vanilla JavaScript
+- **Browser-Based**: All algorithms run in the browser
+- **Modular Design**: Easy to maintain and extend
 
-```html
-<script type="module" src="js/main.js"></script>
+## 📝 Adding New Algorithms
+
+To add a new algorithm:
+
+1. Create a new file in `algorithms/` (e.g., `bidirectional.js`)
+2. Extend `BaseSearchAlgorithm` from `base.js`
+3. Implement the `search(start, goal, options)` method
+4. Export the class
+5. Add to `search-algorithms.js` factory
+6. Update the algorithm dropdown in `index.html`
+
+Example:
+```javascript
+import { BaseSearchAlgorithm } from './base.js';
+
+export class MyNewAlgorithm extends BaseSearchAlgorithm {
+    search(start, goal, options = {}) {
+        // Your implementation
+        return this._buildResult({ ... });
+    }
+}
 ```
 
-All other modules are imported as needed using ES6 imports.
+## 🧪 Testing
 
-## Benefits of This Structure
-
-1. **Separation of Concerns**: Each file has a single, well-defined responsibility
-2. **Maintainability**: Easier to find and modify specific functionality
-3. **Reusability**: Modules can be reused independently
-4. **Testability**: Each module can be tested in isolation
-5. **Scalability**: Easy to add new features without modifying existing code
-6. **Code Organization**: Clear structure makes onboarding easier
-
-## Migration Notes
-
-The original `script.js` (1450 lines) has been:
-- Backed up as `script.js.backup`
-- Split into 14 focused modules (~100-200 lines each)
-- Converted to use ES6 modules with proper imports/exports
-
-All functionality remains the same - only the organization has changed.
+Use `standalone-test.html` in the root directory to test algorithms independently.
 
