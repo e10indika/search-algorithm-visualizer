@@ -14,6 +14,9 @@ export class SearchController {
     static currentGraphData = null;
     static startNode = null;
     static goalNodes = [];
+    static currentStepIndex = 0;
+    static searchResult = null;
+    static isManualMode = false;
 
     /**
      * Draw graph and state space tree
@@ -121,15 +124,20 @@ export class SearchController {
                 return;
             }
 
+            // Store result for manual mode
+            this.searchResult = result;
+            this.currentStepIndex = 0;
+            this.isManualMode = (visualizationMode === 'manual');
+
             // Display results
             this.displayResults(result);
 
-            // Animate the search if in auto mode
+            // Animate the search if in auto mode, otherwise setup manual controls
             if (visualizationMode === 'auto') {
                 await this.animateSearch(result, animationSpeed);
             } else {
-                // Manual mode - just highlight final path
-                this.highlightPath(result.path);
+                // Manual mode - setup step-by-step controls and show first step
+                this.setupManualMode();
             }
 
         } catch (error) {
@@ -138,6 +146,159 @@ export class SearchController {
             if (domRefs.traversalList) {
                 domRefs.traversalList.textContent = `Error: ${error.message}`;
             }
+        }
+    }
+
+    /**
+     * Setup manual mode controls
+     */
+    static setupManualMode() {
+        console.log('🎮 Setting up manual mode controls...');
+
+        // Create controls container if it doesn't exist
+        let controlsContainer = document.getElementById('manual-step-controls');
+        if (!controlsContainer) {
+            controlsContainer = document.createElement('div');
+            controlsContainer.id = 'manual-step-controls';
+            controlsContainer.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                z-index: 1000;
+            `;
+            document.body.appendChild(controlsContainer);
+        }
+
+        controlsContainer.innerHTML = `
+            <button id="prev-step-btn" style="padding: 8px 16px; cursor: pointer;">⏮ Previous</button>
+            <span id="step-counter" style="font-weight: bold; min-width: 120px; text-align: center;">
+                Step 0 / ${this.searchResult.steps.length}
+            </span>
+            <button id="next-step-btn" style="padding: 8px 16px; cursor: pointer;">Next ⏭</button>
+            <button id="play-auto-btn" style="padding: 8px 16px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px;">▶ Play Auto</button>
+            <button id="reset-viz-btn" style="padding: 8px 16px; cursor: pointer;">🔄 Reset</button>
+        `;
+
+        // Add event listeners
+        document.getElementById('prev-step-btn').addEventListener('click', () => this.previousStep());
+        document.getElementById('next-step-btn').addEventListener('click', () => this.nextStep());
+        document.getElementById('play-auto-btn').addEventListener('click', () => this.playAutoFromCurrent());
+        document.getElementById('reset-viz-btn').addEventListener('click', () => this.resetVisualization());
+
+        // Show first step
+        this.executeStep(0);
+    }
+
+    /**
+     * Execute a specific step
+     */
+    static executeStep(stepIndex) {
+        if (!this.searchResult || !this.searchResult.steps) return;
+
+        const steps = this.searchResult.steps;
+        if (stepIndex < 0 || stepIndex >= steps.length) return;
+
+        const step = steps[stepIndex];
+        const node = step.current_node;
+
+        // Update opened/closed lists
+        const openedNodes = step.frontier || [];
+        const closedNodes = step.visited || [];
+
+        console.log('⏱️ Step', stepIndex, 'Action:', step.action, 'Node:', node, 'Opened:', openedNodes, 'Closed:', closedNodes);
+
+        this.updateOpenedNodes(openedNodes);
+        this.updateClosedNodes(closedNodes);
+
+        // Highlight opened nodes in tree with solid blue outline
+        if (this.treeVisualizer) {
+            this.treeVisualizer.highlightOpenedNodes(openedNodes);
+            this.treeVisualizer.highlightClosedNodes(closedNodes);
+        }
+
+        // Highlight current node in graph
+        if (this.graphBuilder && node !== this.startNode && !this.goalNodes.includes(node)) {
+            if (step.action === 'visit') {
+                this.graphBuilder.updateNode(node, 'node-circle visited');
+            }
+        }
+
+        // Update step counter
+        const stepCounter = document.getElementById('step-counter');
+        if (stepCounter) {
+            stepCounter.textContent = `Step ${stepIndex + 1} / ${steps.length}`;
+        }
+
+        // If goal found, highlight the path
+        if (step.action === 'goal_found') {
+            const path = this.searchResult.path || [];
+            if (this.graphBuilder) {
+                this.graphBuilder.highlightPath(path);
+            }
+            if (this.treeVisualizer) {
+                this.treeVisualizer.highlightPath(path);
+            }
+        }
+    }
+
+    /**
+     * Go to next step
+     */
+    static nextStep() {
+        if (this.currentStepIndex < this.searchResult.steps.length - 1) {
+            this.currentStepIndex++;
+            this.executeStep(this.currentStepIndex);
+        }
+    }
+
+    /**
+     * Go to previous step
+     */
+    static previousStep() {
+        if (this.currentStepIndex > 0) {
+            this.currentStepIndex--;
+            this.executeStep(this.currentStepIndex);
+        }
+    }
+
+    /**
+     * Play auto from current step
+     */
+    static async playAutoFromCurrent() {
+        const speed = parseInt(domRefs.animationSpeedSelect?.value || '500');
+
+        for (let i = this.currentStepIndex; i < this.searchResult.steps.length; i++) {
+            this.currentStepIndex = i;
+            this.executeStep(i);
+            await this.sleep(speed);
+        }
+    }
+
+    /**
+     * Reset visualization
+     */
+    static resetVisualization() {
+        this.currentStepIndex = 0;
+        this.executeStep(0);
+
+        // Clear graph colors
+        if (this.graphBuilder) {
+            // Redraw the graph to reset colors
+            this.graphBuilder.buildGraph(this.currentGraphData, this.startNode, this.goalNodes);
+        }
+
+        // Clear tree colors
+        if (this.treeVisualizer) {
+            const maxDepth = parseInt(domRefs.treeDepthInput?.value || '4');
+            this.treeVisualizer.buildTree(this.currentGraphData, this.startNode, maxDepth, this.goalNodes);
         }
     }
 
@@ -151,23 +312,35 @@ export class SearchController {
         const path = result.path || [];
 
         // Animate visited nodes
-        for (let i = 0; i < visited.length; i++) {
-            const node = visited[i];
+        for (let i = 0; i < result.steps.length; i++) {
+            const step = result.steps[i];
+            const node = step.current_node;
 
             // Update opened/closed lists
-            const openedNodes = visited.slice(i);
-            const closedNodes = visited.slice(0, i + 1);
+            const openedNodes = step.frontier || [];
+            const closedNodes = step.visited || [];
+
+            console.log('⏱️ Step', i + 1, 'Action:', step.action, 'Node:', node, 'Opened:', openedNodes, 'Closed:', closedNodes);
+
             this.updateOpenedNodes(openedNodes);
             this.updateClosedNodes(closedNodes);
 
-            // Highlight node in graph
+            // Highlight opened nodes in tree with solid blue outline
+            if (this.treeVisualizer) {
+                this.treeVisualizer.highlightOpenedNodes(openedNodes);
+                this.treeVisualizer.highlightClosedNodes(closedNodes);
+            }
+
+            // Highlight current node in graph
             if (this.graphBuilder && node !== this.startNode && !this.goalNodes.includes(node)) {
-                this.graphBuilder.updateNode(node, 'node-circle visited');
+                if (step.action === 'visit') {
+                    this.graphBuilder.updateNode(node, 'node-circle visited');
+                }
             }
 
             // Highlight node in tree
-            if (this.treeVisualizer) {
-                this.treeVisualizer.highlightNodeByLabel(node);
+            if (this.treeVisualizer && step.action === 'visit') {
+                // this.treeVisualizer.highlightNodeByLabel(node);
             }
 
             await this.sleep(speed);
@@ -185,9 +358,13 @@ export class SearchController {
                 await this.sleep(speed / 2);
             }
 
-            // Highlight full path in graph
+            // Highlight full path in graph and tree
             if (this.graphBuilder) {
                 this.graphBuilder.highlightPath(path);
+            }
+
+            if (this.treeVisualizer) {
+                this.treeVisualizer.highlightPath(path);
             }
 
             console.log('✅ Animation complete!');
@@ -238,6 +415,15 @@ export class SearchController {
         this.currentGraphData = null;
         this.startNode = null;
         this.goalNodes = [];
+        this.currentStepIndex = 0;
+        this.searchResult = null;
+        this.isManualMode = false;
+
+        // Remove manual controls if they exist
+        const controlsContainer = document.getElementById('manual-step-controls');
+        if (controlsContainer) {
+            controlsContainer.remove();
+        }
 
         console.log('✅ Cleared');
     }
@@ -282,11 +468,26 @@ export class SearchController {
      * Update opened nodes list
      */
     static updateOpenedNodes(nodes) {
+        const safeNodes = Array.isArray(nodes) ? nodes : [];
+        console.log('Opened Nodes:', safeNodes);
+
+        // Extract node labels from IDs (e.g., "A#B-1" -> "B")
+        const extractLabel = (nodeId) => {
+            if (nodeId.includes('#')) {
+                // Format: "A#B-1" -> extract "B"
+                const afterHash = nodeId.split('#')[1];
+                return afterHash.split('-')[0];
+            } else {
+                // Format: "A-0" -> extract "A"
+                return nodeId.split('-')[0];
+            }
+        };
+
         if (domRefs.openedListGraph) {
-            domRefs.openedListGraph.innerHTML = nodes.map(n => `<li>${n}</li>`).join('');
+            domRefs.openedListGraph.innerHTML = safeNodes.map(n => `<li>${extractLabel(n)}</li>`).join('');
         }
         if (domRefs.openedListTree) {
-            domRefs.openedListTree.innerHTML = nodes.map(n => `<li>${n}</li>`).join('');
+            domRefs.openedListTree.innerHTML = safeNodes.map(n => `<li>${extractLabel(n)}</li>`).join('');
         }
     }
 
@@ -294,11 +495,23 @@ export class SearchController {
      * Update closed nodes list
      */
     static updateClosedNodes(nodes) {
+        // Extract node labels from IDs (e.g., "A#B-1" -> "B")
+        const extractLabel = (nodeId) => {
+            if (nodeId.includes('#')) {
+                // Format: "A#B-1" -> extract "B"
+                const afterHash = nodeId.split('#')[1];
+                return afterHash.split('-')[0];
+            } else {
+                // Format: "A-0" -> extract "A"
+                return nodeId.split('-')[0];
+            }
+        };
+
         if (domRefs.closedListGraph) {
-            domRefs.closedListGraph.innerHTML = nodes.map(n => `<li>${n}</li>`).join('');
+            domRefs.closedListGraph.innerHTML = nodes.map(n => `<li>${extractLabel(n)}</li>`).join('');
         }
         if (domRefs.closedListTree) {
-            domRefs.closedListTree.innerHTML = nodes.map(n => `<li>${n}</li>`).join('');
+            domRefs.closedListTree.innerHTML = nodes.map(n => `<li>${extractLabel(n)}</li>`).join('');
         }
     }
 

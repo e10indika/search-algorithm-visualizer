@@ -149,10 +149,9 @@ export class TreeVisualizer {
         };
 
         const queue = [root];
-        let nodeCount = 0;
         let goalFound = false;
 
-        while (queue.length > 0 && nodeCount < 1000 && !goalFound) { // Stop when goal is found
+        while (queue.length > 0 && !goalFound) { // Stop when goal is found
             const currentNode = queue.shift();
 
             // Check if current node is a goal node
@@ -175,11 +174,12 @@ export class TreeVisualizer {
                 const lastNode = currentNode.path[currentNode.path.length - 1];
                 if (!(lastNode && lastNode.label && lastNode.label.endsWith('(loop)')) && currentNode.path.includes(neighbor)) {
                     // Add neighbor to path and label as loop node
+                    const childDepth = currentNode.depth + 1;
                     const loopChild = {
-                        id: `${neighbor}-loop-${nodeCount++}`,
+                        id: `${currentNode.path.join('')}#${neighbor}-loop-${childDepth}`,
                         label: `${neighbor} (loop)`,
                         path: [...currentNode.path, neighbor],
-                        depth: currentNode.depth + 1,
+                        depth: childDepth,
                         parent: currentNode,
                         children: []
                     };
@@ -188,15 +188,17 @@ export class TreeVisualizer {
                     return;
                 }
 
-                // Create child node
+                // Create child node with depth-based ID
                 const childPath = [...currentNode.path, neighbor];
-                const childId = `${neighbor}-${nodeCount++}`;
+                const childDepth = currentNode.depth + 1;
+                const childId = `${currentNode.path.join('')}#${neighbor}-${childDepth}`;
+                console.log(`currentNode Path: `, currentNode.path, 'Child Path:', childPath, `Child ID: ${childId}`);
 
                 const child = {
                     id: childId,
                     label: neighbor,
                     path: childPath,
-                    depth: currentNode.depth + 1,
+                    depth: childDepth,
                     parent: currentNode,
                     children: []
                 };
@@ -318,9 +320,11 @@ export class TreeVisualizer {
             }
         });
 
-        // Draw node
+        // Draw node - use node.id for data-node attribute so we can find it later
         const pathStr = node.path.join('→');
-        SVGRenderer.drawTreeNode(this.svg, pos.x, pos.y, node.label, `d:${node.depth}`, 'tree-node');
+        const nodeGroup = SVGRenderer.drawTreeNode(this.svg, pos.x, pos.y, node.label, `d:${node.depth}`, 'tree-node');
+        // Update the data-node attribute to use the full node ID instead of just the label
+        nodeGroup.setAttribute('data-node', node.id);
 
         // Recursively draw children
         node.children.forEach(child => this.drawTree(child));
@@ -339,15 +343,52 @@ export class TreeVisualizer {
     /**
      * Highlight node by label at specific depth
      */
-    highlightNodeByLabel(label, depth = null) {
+    highlightNodeByLabel(label, depth = null, className = 'tree-node current') {
         // Find matching nodes in positions map
         for (const [id, pos] of this.nodePositions.entries()) {
             if (pos.label === label) {
                 if (depth === null || id.includes(`-${depth}`)) {
-                    this.updateTreeNode(id.split('-')[0], 'tree-node current');
+                    this.updateTreeNode(id.split('-')[0], className);
                 }
             }
         }
+    }
+
+    /**
+     * Highlight nodes in the opened list with solid blue outline
+     */
+    highlightOpenedNodes(openedList) {
+        if (!openedList || !Array.isArray(openedList)) return;
+
+        // Add 'opened' class to nodes in the opened list
+        openedList.forEach(nodeId => {
+            const nodeGroup = this.svg.querySelector(`[data-node="${nodeId}"]`);
+            if (nodeGroup) {
+                const circle = nodeGroup.querySelector('circle');
+                if (circle) {
+                    circle.setAttribute('class', 'tree-node opened');
+                }
+            }
+        });
+    }
+
+    /**
+     * Highlight nodes in the closed list
+     */
+    highlightClosedNodes(closedList) {
+        if (!closedList || !Array.isArray(closedList)) return;
+
+        closedList.forEach(nodeId => {
+            const nodeGroup = this.svg.querySelector(`[data-node="${nodeId}"]`);
+            if (nodeGroup) {
+                const circle = nodeGroup.querySelector('circle');
+                if (circle && !circle.classList.contains('path')) {
+                    // Remove 'opened' class if it exists and add 'visited'
+                    circle.classList.remove('opened');
+                    circle.setAttribute('class', 'tree-node visited');
+                }
+            }
+        });
     }
 
     /**
@@ -366,7 +407,7 @@ export class TreeVisualizer {
             return;
         }
 
-        console.log('Found path node IDs:', pathNodeIds);
+        console.log('✅ Path nodes found:', pathNodeIds);
 
         // Highlight path nodes
         pathNodeIds.forEach(nodeId => {
@@ -399,12 +440,14 @@ export class TreeVisualizer {
                     );
 
                     if (connects) {
-                        link.classList.add('path');
-                        console.log(`✅ Highlighted edge: ${pos1.label} -> ${pos2.label}`);
+                        // link.classList.add('path');
+                        link.setAttribute('class', 'edge-line path');
                     }
                 });
             }
         }
+
+        console.log('✅ Path highlighted successfully');
     }
 
     /**

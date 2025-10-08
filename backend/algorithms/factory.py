@@ -4,8 +4,10 @@ Factory pattern for creating search algorithm instances
 """
 
 from typing import Dict, List
+
+from .breadth_first_search import BreadthFirstSearch
 from .base import BaseSearchAlgorithm
-from .uninformed_search import BreadthFirstSearch, DepthFirstSearch
+from .depth_first_search import DepthFirstSearch
 from .informed_search import AStarSearch, GreedyBestFirstSearch
 from .weighted_search import DijkstraSearch
 

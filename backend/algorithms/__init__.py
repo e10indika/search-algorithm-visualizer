@@ -4,7 +4,8 @@ Organized collection of graph search algorithms
 """
 
 from .base import SearchStep, SearchResult
-from .uninformed_search import BreadthFirstSearch, DepthFirstSearch
+from .depth_first_search import DepthFirstSearch
+from .breadth_first_search import BreadthFirstSearch
 from .informed_search import AStarSearch, GreedyBestFirstSearch
 from .weighted_search import DijkstraSearch
 from .tree_generator import StateSpaceTreeGenerator

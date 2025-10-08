@@ -467,7 +467,16 @@ svg {
 .node-circle.visited {
     fill: #ce93d8;
     stroke: #8e24aa;
+    stroke-dasharray: 0;
 }
+
+.opened-node {
+    stroke: #3b88d5;      /* Solid blue */
+    stroke-width: 4px;
+    stroke-dasharray: 0;  /* Solid line */
+    transition: stroke 0.3s, stroke-width 0.3s;
+}
+
 
 .node-circle.path {
     fill: #ffd54f;
@@ -497,7 +506,7 @@ svg {
 .edge-line.path {
     stroke: #f57f17;
     stroke-width: 3;
-    stroke-dasharray: 5,5;
+    /*stroke-dasharray: 5,5;*/
 }
 
 .edge-weight {
@@ -528,6 +537,21 @@ svg {
 .tree-node.visited {
     fill: #ce93d8;
     stroke: #8e24aa;
+    stroke-dasharray: 0;
+}
+
+.tree-node.opened {
+    stroke: #1976D2;
+    stroke-width: 4;
+    stroke-dasharray: none;
+    fill: #E3F2FD;
+}
+
+.tree-node.path {
+    fill: #FFB74D;
+    stroke: #F57C00;
+    stroke-width: 3;
+    stroke-dasharray: none;
 }
 
 .tree-link {
