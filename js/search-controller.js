@@ -3,10 +3,10 @@
  * Coordinates graph visualization, tree generation, and search execution
  */
 
-import { GraphBuilder } from './graph-builder.js';
-import { TreeVisualizer } from './tree-visualizer.js';
-import { domRefs } from './dom.js';
-import { APIService } from './api.js';
+import {GraphBuilder} from './graph-builder.js';
+import {TreeVisualizer} from './tree-visualizer.js';
+import {domRefs} from './dom.js';
+import {APIService} from './api.js';
 
 export class SearchController {
     static graphBuilder = null;
@@ -85,7 +85,7 @@ export class SearchController {
 
     static syncVisualizationSizes() {
         const graphContainer = domRefs.graphContainer;
-        const treeContainer = domRefs.stateRefsTreeContainer;
+        const treeContainer = domRefs.stateSpaceTreeContainer;
 
         if (!graphContainer || !treeContainer) return;
 
@@ -97,10 +97,13 @@ export class SearchController {
             const maxHeight = Math.max(graphRect.height, treeRect.height);
 
             if (maxWidth > 0 && maxHeight > 0) {
-                graphContainer.style.minWidth = maxWidth + 'px';
-                graphContainer.style.minHeight = maxHeight + 'px';
-                treeContainer.style.minWidth = maxWidth + 'px';
-                treeContainer.style.minHeight = maxHeight + 'px';
+                const sizeStyle = `${maxWidth}px`;
+                const heightStyle = `${maxHeight}px`;
+
+                graphContainer.style.minWidth = sizeStyle;
+                graphContainer.style.minHeight = heightStyle;
+                treeContainer.style.minWidth = sizeStyle;
+                treeContainer.style.minHeight = heightStyle;
             }
         }, 100);
     }
@@ -132,17 +135,12 @@ export class SearchController {
         };
 
         try {
-            if (domRefs.traversalList) {
-                domRefs.traversalList.textContent = 'Running search...';
-            }
+            this.setTraversalMessage('Running search...');
 
             const result = await APIService.searchGraph(requestData);
 
             if (result.error) {
-                alert(`Search failed: ${result.error}`);
-                if (domRefs.traversalList) {
-                    domRefs.traversalList.textContent = `Error: ${result.error}`;
-                }
+                this.handleSearchError(result.error);
                 return;
             }
 
@@ -159,11 +157,19 @@ export class SearchController {
             }
         } catch (error) {
             console.error('Search error:', error);
-            alert(`Search failed: ${error.message}`);
-            if (domRefs.traversalList) {
-                domRefs.traversalList.textContent = `Error: ${error.message}`;
-            }
+            this.handleSearchError(error.message);
         }
+    }
+
+    static setTraversalMessage(message) {
+        if (domRefs.traversalList) {
+            domRefs.traversalList.textContent = message;
+        }
+    }
+
+    static handleSearchError(errorMessage) {
+        alert(`Search failed: ${errorMessage}`);
+        this.setTraversalMessage(`Error: ${errorMessage}`);
     }
 
     // ==================== Manual Mode Controls ====================
@@ -229,13 +235,9 @@ export class SearchController {
         }
 
         const step = this.searchResult.steps[stepIndex];
-        const { current_node: node, frontier = [], visited = [], action, parent = {} } = step;
+        const {current_node: node, frontier = [], visited = [], action} = step;
 
-        const extra = {
-            costs: step.costs || {},
-            parents: parent,
-            heuristics: this.currentGraphData?.heuristic || {}
-        };
+        const extra = this.buildExtraData(step);
 
         this.updateOpenedNodes(frontier, extra);
         this.updateClosedNodes(visited, extra);
@@ -245,34 +247,51 @@ export class SearchController {
             this.treeVisualizer.highlightClosedNodes(visited);
         }
 
-        if (this.graphBuilder && action === 'visit') {
-            if (node !== this.startNode && !this.goalNodes.includes(node)) {
-                this.graphBuilder.updateNode(node, 'node-circle visited');
-            }
+        if (this.shouldUpdateNodeVisual(node, action)) {
+            this.graphBuilder.updateNode(node, 'node-circle visited');
         }
 
+        this.updateStepCounter(stepIndex);
+
+        if (action === 'goal_found') {
+            this.highlightGoalPath();
+        }
+    }
+
+    static buildExtraData(step) {
+        return {
+            costs: step.costs || {},
+            parents: step.parent || {},
+            heuristics: this.currentGraphData?.heuristic || {}
+        };
+    }
+
+    static shouldUpdateNodeVisual(node, action) {
+        return this.graphBuilder &&
+            action === 'visit' &&
+            node !== this.startNode &&
+            !this.goalNodes.includes(node);
+    }
+
+    static updateStepCounter(stepIndex) {
         const stepCounter = document.getElementById('step-counter');
         if (stepCounter) {
             stepCounter.textContent = `Step ${stepIndex + 1} / ${this.searchResult.steps.length}`;
         }
+    }
 
-        if (action === 'goal_found') {
-            const path = this.searchResult.path || [];
-            this.graphBuilder?.highlightPath(path);
-            this.treeVisualizer?.highlightPath(path);
-        }
+    static highlightGoalPath() {
+        const path = this.searchResult.path || [];
+        this.graphBuilder?.highlightPath(path);
+        this.treeVisualizer?.highlightPath(path);
     }
 
     static async animateSearch(result, speed) {
         for (let i = 0; i < result.steps.length; i++) {
             const step = result.steps[i];
-            const { current_node: node, frontier = [], visited = [], action, parent = {} } = step;
+            const {current_node: node, frontier = [], visited = [], action} = step;
 
-            const extra = {
-                costs: step.costs || {},
-                parents: parent,
-                heuristics: this.currentGraphData?.heuristic || {}
-            };
+            const extra = this.buildExtraData(step);
 
             this.updateOpenedNodes(frontier, extra);
             this.updateClosedNodes(visited, extra);
@@ -282,27 +301,30 @@ export class SearchController {
                 this.treeVisualizer.highlightClosedNodes(visited);
             }
 
-            if (this.graphBuilder && action === 'visit' && node !== this.startNode && !this.goalNodes.includes(node)) {
+            if (this.shouldUpdateNodeVisual(node, action)) {
                 this.graphBuilder.updateNode(node, 'node-circle visited');
             }
 
             await this.sleep(speed);
         }
 
-        const path = result.path || [];
-        if (path.length > 0) {
-            await this.sleep(500);
+        await this.animateFinalPath(result.path, speed);
+    }
 
-            for (const node of path) {
-                if (this.graphBuilder && node !== this.startNode && !this.goalNodes.includes(node)) {
-                    this.graphBuilder.updateNode(node, 'node-circle path');
-                }
-                await this.sleep(speed / 2);
+    static async animateFinalPath(path = [], speed) {
+        if (path.length === 0) return;
+
+        await this.sleep(500);
+
+        for (const node of path) {
+            if (this.graphBuilder && node !== this.startNode && !this.goalNodes.includes(node)) {
+                this.graphBuilder.updateNode(node, 'node-circle path');
             }
-
-            this.graphBuilder?.highlightPath(path);
-            this.treeVisualizer?.highlightPath(path);
+            await this.sleep(speed / 2);
         }
+
+        this.graphBuilder?.highlightPath(path);
+        this.treeVisualizer?.highlightPath(path);
     }
 
     static sleep(ms) {
@@ -319,32 +341,13 @@ export class SearchController {
         const closedNodes = this.searchResult?.steps?.[this.currentStepIndex]?.visited || [];
         const closedNodeLabels = this.extractClosedNodeLabels(closedNodes);
 
-        // Debug logging
-        console.log('=== Opened Nodes Debug ===');
-        console.log('Raw frontier nodes:', safeNodes);
-        console.log('Closed node labels:', Array.from(closedNodeLabels));
-
-        const goalOccurrences = new Map();
-
         const labels = safeNodes
-            .filter(n => {
-                const cleanLabel = this.getCleanLabel(this.extractNodeLabel(n));
-                const shouldKeep = !closedNodeLabels.has(cleanLabel);
-                console.log(`Node ${n}: cleanLabel=${cleanLabel}, shouldKeep=${shouldKeep}`);
-                return shouldKeep;
-            })
-            .map(n => {
-                const item = this.createOpenedNodeListItem(n, extra, algorithm, showCosts, goalOccurrences);
-                console.log(`Created list item for ${n}:`, item);
-                return item;
-            })
+            .filter(n => !closedNodeLabels.has(this.getCleanLabel(this.extractNodeLabel(n))))
+            .map(n => this.createNodeListItem(n, extra, showCosts, '#ff6b35'))
             .join('');
 
-        console.log('Final opened list HTML:', labels);
-        console.log('=========================');
-
-        if (domRefs.openedListGraph) domRefs.openedListGraph.innerHTML = labels;
-        if (domRefs.openedListTree) domRefs.openedListTree.innerHTML = labels;
+        this.setListContent(domRefs.openedListGraph, labels);
+        this.setListContent(domRefs.openedListTree, labels);
     }
 
     static updateClosedNodes(nodes, extra = {}) {
@@ -352,14 +355,17 @@ export class SearchController {
         const showCosts = this.shouldShowCosts(algorithm);
 
         const nodeDataMap = this.buildNodeDataMap(nodes, extra, showCosts);
-        const goalOccurrences = new Map();
 
         const labels = Array.from(nodeDataMap.values())
-            .map(data => this.createClosedNodeListItem(data, extra, algorithm, showCosts, goalOccurrences))
+            .map(data => this.createNodeListItem(data.nodeId, extra, showCosts, '#d9534f', data.cost))
             .join('');
 
-        if (domRefs.closedListGraph) domRefs.closedListGraph.innerHTML = labels;
-        if (domRefs.closedListTree) domRefs.closedListTree.innerHTML = labels;
+        this.setListContent(domRefs.closedListGraph, labels);
+        this.setListContent(domRefs.closedListTree, labels);
+    }
+
+    static setListContent(element, content) {
+        if (element) element.innerHTML = content;
     }
 
     // ==================== Helper Methods ====================
@@ -403,9 +409,7 @@ export class SearchController {
     static extractNodeCost(nodeId, nodeLabel, cleanLabel, extra, showCosts) {
         if (!showCosts || !extra.costs) return undefined;
 
-        let cost = extra.costs[nodeId];
-        if (cost === undefined) cost = extra.costs[nodeLabel];
-        if (cost === undefined) cost = extra.costs[cleanLabel];
+        let cost = extra.costs[nodeId] ?? extra.costs[nodeLabel] ?? extra.costs[cleanLabel];
 
         if (cost === undefined && nodeId.includes('#') && this.searchResult?.steps) {
             for (const step of this.searchResult.steps) {
@@ -419,66 +423,24 @@ export class SearchController {
         return cost;
     }
 
-    static createOpenedNodeListItem(nodeId, extra, algorithm, showCosts, goalOccurrences) {
+    static createNodeListItem(nodeId, extra, showCosts, backgroundColor, preCalculatedCost) {
         const nodeLabel = this.extractNodeLabel(nodeId);
         const cleanLabel = this.getCleanLabel(nodeLabel);
-        const cost = this.extractNodeCost(nodeId, nodeLabel, cleanLabel, extra, showCosts);
-
-        // Get display label for goal nodes (with sequence numbering)
-        // const displayLabel = this.goalNodes?.includes(cleanLabel)
-        //     ? this.getSequencedLabel(nodeId, cleanLabel, goalOccurrences)
-        //     : cleanLabel;
+        const cost = preCalculatedCost ?? this.extractNodeCost(nodeId, nodeLabel, cleanLabel, extra, showCosts);
 
         if (!showCosts || cost === undefined) {
             return `<li>${cleanLabel}</li>`;
         }
 
-        // Display label with cost in a separate colored box below
         return `<li style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
             <span>${cleanLabel}</span>
-            <span style="background: #ff6b35; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; font-weight: bold; min-width: 20px; text-align: center;">${cost}</span>
+            <span style="background: ${backgroundColor}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; font-weight: bold; min-width: 20px; text-align: center;">${cost}</span>
         </li>`;
-    }
-
-    static createClosedNodeListItem(data, extra, algorithm, showCosts, goalOccurrences) {
-        // Get display label for goal nodes (with sequence numbering)
-        // const displayLabel = this.goalNodes?.includes(data.cleanLabel)
-        //     ? this.getSequencedLabel(data.nodeId, data.cleanLabel, goalOccurrences)
-        //     : data.cleanLabel;
-
-        if (!showCosts || data.cost === undefined) {
-            return `<li>${data.cleanLabel}</li>`;
-        }
-
-        // Display label with cost in a separate colored box below
-        return `<li style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-            <span>${data.cleanLabel}</span>
-            <span style="background: #d9534f; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; font-weight: bold; min-width: 20px; text-align: center;">${data.cost}</span>
-        </li>`;
-    }
-
-    static getSequencedLabel(nodeId, cleanLabel, goalOccurrences) {
-        if (!this.goalNodes?.includes(cleanLabel)) {
-            return cleanLabel;
-        }
-
-        const match = nodeId.match(/#([A-Z]+\d+)-/);
-        if (match) {
-            return match[1];
-        }
-
-        if (!goalOccurrences.has(cleanLabel)) {
-            goalOccurrences.set(cleanLabel, 0);
-        }
-        const count = goalOccurrences.get(cleanLabel) + 1;
-        goalOccurrences.set(cleanLabel, count);
-        return `${cleanLabel}${count}`;
     }
 
     static extractNodeLabel(nodeId) {
         if (nodeId.includes('#')) {
-            const parts = nodeId.split('#')[1].split('-');
-            return parts[0];
+            return nodeId.split('#')[1].split('-')[0];
         }
         return nodeId.split('-')[0];
     }
@@ -508,10 +470,7 @@ export class SearchController {
             this.treeVisualizer.buildTree(this.currentGraphData, this.startNode, maxDepth, this.goalNodes, options);
         }
 
-        const stepCounter = document.getElementById('step-counter');
-        if (stepCounter && this.searchResult) {
-            stepCounter.textContent = `Step 0 / ${this.searchResult.steps.length}`;
-        }
+        this.updateStepCounter(-1);
     }
 
     static resetVisualizationState() {
@@ -530,16 +489,18 @@ export class SearchController {
         const nodes = this.graphBuilder.svg.querySelectorAll('.node-circle');
         nodes.forEach(node => {
             const nodeLabel = node.parentElement.getAttribute('data-node');
-            let nodeClass = 'node-circle';
-
-            if (nodeLabel === this.startNode) {
-                nodeClass += ' start';
-            } else if (this.goalNodes.includes(nodeLabel)) {
-                nodeClass += ' goal';
-            }
-
+            const nodeClass = this.getNodeClass(nodeLabel);
             node.setAttribute('class', nodeClass);
         });
+    }
+
+    static getNodeClass(nodeLabel) {
+        if (nodeLabel === this.startNode) {
+            return 'node-circle start';
+        } else if (this.goalNodes.includes(nodeLabel)) {
+            return 'node-circle goal';
+        }
+        return 'node-circle';
     }
 
     static resetGraphEdges() {

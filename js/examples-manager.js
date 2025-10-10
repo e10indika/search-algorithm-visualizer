@@ -113,22 +113,12 @@ export class ExamplesManager {
     };
 
     static async loadExamples() {
-        console.log('📚 Loading predefined examples...');
-        console.log(`✅ Loaded ${Object.keys(this.examples).length} examples`);
         return this.examples;
     }
 
     static getExample(name) {
         const example = this.examples[name];
-        if (!example) {
-            console.warn(`Example '${name}' not found`);
-            return null;
-        }
-        // Return a deep copy to avoid mutations
+        if (!example) return null;
         return JSON.parse(JSON.stringify(example));
-    }
-
-    static getAllExamples() {
-        return this.examples;
     }
 }

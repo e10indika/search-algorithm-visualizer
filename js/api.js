@@ -3,40 +3,24 @@
  * Handles search algorithm execution using local JavaScript implementation
  */
 
-import { SearchAlgorithms } from './algorithms/search-algorithms.js';
+import {SearchAlgorithms} from './algorithms/search-algorithms.js';
 
 export class APIService {
-    /**
-     * Check health (no backend needed anymore)
-     */
     static async checkHealth() {
-        console.log('✅ Running in browser-only mode - no backend required');
-        return { status: 'ok', mode: 'browser-only' };
+        return {status: 'ok', mode: 'browser-only'};
     }
 
-    /**
-     * Execute search algorithm locally (no backend required)
-     * @param {object} requestData - Request data containing algorithm, graph, start, goal, etc.
-     * @returns {Promise<object>} Search result
-     */
     static async searchGraph(requestData) {
         try {
-            const { algorithm, graph, start, goal, weights, heuristic, maxDepth } = requestData;
+            const {algorithm, graph, start, goal, weights, heuristic, maxDepth} = requestData;
 
-            console.log('🔍 Executing search locally:', { algorithm, start, goal });
-
-            // Execute the algorithm locally using JavaScript implementation
-            const result = SearchAlgorithms.search(algorithm, graph, start, goal, {
+            return SearchAlgorithms.search(algorithm, graph, start, goal, {
                 weights: weights || {},
                 heuristic: heuristic || {},
                 maxDepth: maxDepth || undefined
             });
-
-            console.log('✅ Search completed locally:', result);
-
-            return result;
         } catch (error) {
-            console.error('❌ Search error:', error);
+            console.error('Search error:', error);
             return {
                 error: error.message,
                 success: false,
@@ -45,14 +29,5 @@ export class APIService {
                 steps: []
             };
         }
-    }
-
-    /**
-     * Legacy method - kept for compatibility
-     * Now executes locally instead of calling backend
-     */
-    static async callBackend(endpoint, data) {
-        console.warn('Backend call intercepted - executing locally instead');
-        return this.searchGraph(data);
     }
 }

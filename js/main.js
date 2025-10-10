@@ -9,13 +9,9 @@ import {ExamplesManager} from './examples-manager.js';
 
 class App {
     static async initialize() {
-        console.log('Initializing Search Algorithms Visualizer...');
-
         await APIService.checkHealth();
         await ExamplesManager.loadExamples();
         this.setupEventListeners();
-
-        console.log('Application initialized successfully!');
     }
 
     static setupEventListeners() {
@@ -24,8 +20,6 @@ class App {
         this.setupButtons();
         this.setupVisualizationMode();
         this.setupAlgorithmSelection();
-
-        console.log('Event listeners registered');
     }
 
     static setupInputModeToggle() {
@@ -45,13 +39,15 @@ class App {
         dom.startGraphButton?.addEventListener('click', () => SearchController.runSearch());
         domRefs.clearResultsButton?.addEventListener('click', () => SearchController.clearGraph());
 
-        // Add event listener for open tree in new window button
         const openTreeWindowBtn = document.getElementById('open-tree-window');
         if (openTreeWindowBtn) {
             openTreeWindowBtn.addEventListener('click', () => this.handleOpenTreeWindow());
         }
 
-        // Add event listeners for tree display toggles
+        this.setupTreeDisplayToggles();
+    }
+
+    static setupTreeDisplayToggles() {
         const showWeightsCheckbox = document.getElementById('show-tree-weights');
         const showHeuristicsCheckbox = document.getElementById('show-tree-heuristics');
 
@@ -79,28 +75,17 @@ class App {
 
     static setupAlgorithmSelection() {
         dom.graphAlgorithmSelect?.addEventListener('change', (e) => {
-            // const heuristicContainer = dom.heuristicInput?.parentElement?.parentElement;
-            // if (heuristicContainer) {
-            //     const needsHeuristic = ['astar', 'greedy'].includes(e.target.value);
-            //     heuristicContainer.classList.toggle('hidden', !needsHeuristic);
-            // }
-
             if (domRefs.depthControlGroup) {
                 domRefs.depthControlGroup.classList.toggle('hidden', e.target.value !== 'limited-dfs');
             }
-
         });
-        domRefs.depthControlGroup.classList.add('hidden');
+        domRefs.depthControlGroup?.classList.add('hidden');
     }
 
     static handleInputModeChange(mode) {
         const showCustom = mode === 'custom';
-        if (domRefs.customGraphCol) {
-            domRefs.customGraphCol.classList.toggle('hidden', !showCustom);
-        }
-        if (domRefs.predefinedGraphCol) {
-            domRefs.predefinedGraphCol.classList.toggle('hidden', showCustom);
-        }
+        domRefs.customGraphCol?.classList.toggle('hidden', !showCustom);
+        domRefs.predefinedGraphCol?.classList.toggle('hidden', showCustom);
     }
 
     static handleExampleSelection(exampleName) {
@@ -190,3 +175,4 @@ if (document.readyState === 'loading') {
 } else {
     App.initialize();
 }
+
