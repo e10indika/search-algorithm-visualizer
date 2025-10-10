@@ -2,10 +2,10 @@
  * Main Application Entry Point
  */
 
-import { APIService } from './api.js';
-import { dom, domRefs } from './dom.js';
-import { SearchController } from './search-controller.js';
-import { ExamplesManager } from './examples-manager.js';
+import {APIService} from './api.js';
+import {dom, domRefs} from './dom.js';
+import {SearchController} from './search-controller.js';
+import {ExamplesManager} from './examples-manager.js';
 
 class App {
     static async initialize() {
@@ -79,12 +79,18 @@ class App {
 
     static setupAlgorithmSelection() {
         dom.graphAlgorithmSelect?.addEventListener('change', (e) => {
-            const heuristicContainer = dom.heuristicInput?.parentElement?.parentElement;
-            if (heuristicContainer) {
-                const needsHeuristic = ['astar', 'greedy'].includes(e.target.value);
-                heuristicContainer.classList.toggle('hidden', !needsHeuristic);
+            // const heuristicContainer = dom.heuristicInput?.parentElement?.parentElement;
+            // if (heuristicContainer) {
+            //     const needsHeuristic = ['astar', 'greedy'].includes(e.target.value);
+            //     heuristicContainer.classList.toggle('hidden', !needsHeuristic);
+            // }
+
+            if (domRefs.depthControlGroup) {
+                domRefs.depthControlGroup.classList.toggle('hidden', e.target.value !== 'limited-dfs');
             }
+
         });
+        domRefs.depthControlGroup.classList.add('hidden');
     }
 
     static handleInputModeChange(mode) {

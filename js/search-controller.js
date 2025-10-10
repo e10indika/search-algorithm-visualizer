@@ -18,6 +18,8 @@ export class SearchController {
     static searchResult = null;
     static isManualMode = false;
 
+    // ==================== Graph Drawing & Validation ====================
+
     static drawGraph(graphData) {
         this.goalNodes = (graphData.goal || '').split(',').map(g => g.trim()).filter(g => g);
         this.startNode = graphData.start;
@@ -25,8 +27,10 @@ export class SearchController {
 
         if (!this.validateGraphData()) return;
 
+        this.resetVisualization();
         this.renderGraphVisualization(graphData);
         this.renderTreeVisualization(graphData);
+        this.syncVisualizationSizes();
         this.clearResults();
     }
 
@@ -79,6 +83,30 @@ export class SearchController {
         this.treeVisualizer.buildTree(graphData, this.startNode, maxDepth, this.goalNodes, options);
     }
 
+    static syncVisualizationSizes() {
+        const graphContainer = domRefs.graphContainer;
+        const treeContainer = domRefs.stateRefsTreeContainer;
+
+        if (!graphContainer || !treeContainer) return;
+
+        setTimeout(() => {
+            const graphRect = graphContainer.getBoundingClientRect();
+            const treeRect = treeContainer.getBoundingClientRect();
+
+            const maxWidth = Math.max(graphRect.width, treeRect.width);
+            const maxHeight = Math.max(graphRect.height, treeRect.height);
+
+            if (maxWidth > 0 && maxHeight > 0) {
+                graphContainer.style.minWidth = maxWidth + 'px';
+                graphContainer.style.minHeight = maxHeight + 'px';
+                treeContainer.style.minWidth = maxWidth + 'px';
+                treeContainer.style.minHeight = maxHeight + 'px';
+            }
+        }, 100);
+    }
+
+    // ==================== Search Execution ====================
+
     static async runSearch() {
         if (!this.currentGraphData || !this.startNode || this.goalNodes.length === 0) {
             alert('Please draw a graph first');
@@ -89,7 +117,6 @@ export class SearchController {
         const visualizationMode = domRefs.visualizationModeSelect?.value || 'auto';
         const animationSpeed = parseInt(domRefs.animationSpeedSelect?.value || '500');
 
-        // Reset visual state before new search
         this.resetVisualizationState();
         this.clearResults();
         this.clearNodeLists();
@@ -100,17 +127,22 @@ export class SearchController {
             start: this.startNode,
             goal: this.goalNodes[0],
             weights: this.currentGraphData.weights || {},
-            heuristic: this.currentGraphData.heuristic || {}
+            heuristic: this.currentGraphData.heuristic || {},
+            maxDepth: parseInt(domRefs.limitDepthInput?.value || '4')
         };
 
         try {
-            if (domRefs.traversalList) domRefs.traversalList.textContent = 'Running search...';
+            if (domRefs.traversalList) {
+                domRefs.traversalList.textContent = 'Running search...';
+            }
 
             const result = await APIService.searchGraph(requestData);
 
             if (result.error) {
                 alert(`Search failed: ${result.error}`);
-                if (domRefs.traversalList) domRefs.traversalList.textContent = `Error: ${result.error}`;
+                if (domRefs.traversalList) {
+                    domRefs.traversalList.textContent = `Error: ${result.error}`;
+                }
                 return;
             }
 
@@ -128,9 +160,13 @@ export class SearchController {
         } catch (error) {
             console.error('Search error:', error);
             alert(`Search failed: ${error.message}`);
-            if (domRefs.traversalList) domRefs.traversalList.textContent = `Error: ${error.message}`;
+            if (domRefs.traversalList) {
+                domRefs.traversalList.textContent = `Error: ${error.message}`;
+            }
         }
     }
+
+    // ==================== Manual Mode Controls ====================
 
     static setupManualMode() {
         const controlsContainer = this.getOrCreateManualControlsContainer();
@@ -152,9 +188,7 @@ export class SearchController {
     static renderManualControls(container) {
         container.innerHTML = `
             <button id="prev-step-btn">⏮ Previous</button>
-            <span id="step-counter">
-                Step 0 / ${this.searchResult.steps.length}
-            </span>
+            <span id="step-counter">Step 0 / ${this.searchResult.steps.length}</span>
             <button id="next-step-btn">Next ⏭</button>
             <button id="play-auto-btn">▶ Play Auto</button>
             <button id="reset-viz-btn">🔄 Reset</button>
@@ -164,34 +198,6 @@ export class SearchController {
         document.getElementById('next-step-btn').addEventListener('click', () => this.nextStep());
         document.getElementById('play-auto-btn').addEventListener('click', () => this.playAutoFromCurrent());
         document.getElementById('reset-viz-btn').addEventListener('click', () => this.resetVisualization());
-    }
-
-    static executeStep(stepIndex) {
-        if (!this.searchResult?.steps || stepIndex < 0 || stepIndex >= this.searchResult.steps.length) return;
-
-        const step = this.searchResult.steps[stepIndex];
-        const { current_node: node, frontier: openedNodes = [], visited: closedNodes = [], action } = step;
-
-        this.updateOpenedNodes(openedNodes);
-        this.updateClosedNodes(closedNodes);
-
-        if (this.treeVisualizer) {
-            this.treeVisualizer.highlightOpenedNodes(openedNodes);
-            this.treeVisualizer.highlightClosedNodes(closedNodes);
-        }
-
-        if (this.graphBuilder && action === 'visit' && node !== this.startNode && !this.goalNodes.includes(node)) {
-            this.graphBuilder.updateNode(node, 'node-circle visited');
-        }
-
-        const stepCounter = document.getElementById('step-counter');
-        if (stepCounter) stepCounter.textContent = `Step ${stepIndex + 1} / ${this.searchResult.steps.length}`;
-
-        if (action === 'goal_found') {
-            const path = this.searchResult.path || [];
-            this.graphBuilder?.highlightPath(path);
-            this.treeVisualizer?.highlightPath(path);
-        }
     }
 
     static nextStep() {
@@ -215,47 +221,65 @@ export class SearchController {
         }
     }
 
-    static resetVisualization() {
-        this.currentStepIndex = 0;
+    // ==================== Step Execution & Animation ====================
 
-        // Reset visual state
-        this.resetVisualizationState();
-
-        // Clear results and node lists
-        this.clearResults();
-        this.clearNodeLists();
-
-        if (this.graphBuilder) {
-            this.graphBuilder.buildGraph(this.currentGraphData, this.startNode, this.goalNodes);
+    static executeStep(stepIndex) {
+        if (!this.searchResult?.steps || stepIndex < 0 || stepIndex >= this.searchResult.steps.length) {
+            return;
         }
+
+        const step = this.searchResult.steps[stepIndex];
+        const { current_node: node, frontier = [], visited = [], action, parent = {} } = step;
+
+        const extra = {
+            costs: step.costs || {},
+            parents: parent,
+            heuristics: this.currentGraphData?.heuristic || {}
+        };
+
+        this.updateOpenedNodes(frontier, extra);
+        this.updateClosedNodes(visited, extra);
 
         if (this.treeVisualizer) {
-            const maxDepth = parseInt(domRefs.treeDepthInput?.value || '4');
-            const options = {
-                weights: this.currentGraphData.weights || {},
-                heuristic: this.currentGraphData.heuristic || {}
-            };
-            this.treeVisualizer.buildTree(this.currentGraphData, this.startNode, maxDepth, this.goalNodes, options);
+            this.treeVisualizer.highlightOpenedNodes(frontier);
+            this.treeVisualizer.highlightClosedNodes(visited);
         }
 
-        // Update step counter if it exists
+        if (this.graphBuilder && action === 'visit') {
+            if (node !== this.startNode && !this.goalNodes.includes(node)) {
+                this.graphBuilder.updateNode(node, 'node-circle visited');
+            }
+        }
+
         const stepCounter = document.getElementById('step-counter');
-        if (stepCounter && this.searchResult) {
-            stepCounter.textContent = `Step 0 / ${this.searchResult.steps.length}`;
+        if (stepCounter) {
+            stepCounter.textContent = `Step ${stepIndex + 1} / ${this.searchResult.steps.length}`;
+        }
+
+        if (action === 'goal_found') {
+            const path = this.searchResult.path || [];
+            this.graphBuilder?.highlightPath(path);
+            this.treeVisualizer?.highlightPath(path);
         }
     }
 
     static async animateSearch(result, speed) {
         for (let i = 0; i < result.steps.length; i++) {
             const step = result.steps[i];
-            const { current_node: node, frontier: openedNodes = [], visited: closedNodes = [], action } = step;
+            const { current_node: node, frontier = [], visited = [], action, parent = {} } = step;
 
-            this.updateOpenedNodes(openedNodes);
-            this.updateClosedNodes(closedNodes);
+            const extra = {
+                costs: step.costs || {},
+                parents: parent,
+                heuristics: this.currentGraphData?.heuristic || {}
+            };
+
+            this.updateOpenedNodes(frontier, extra);
+            this.updateClosedNodes(visited, extra);
 
             if (this.treeVisualizer) {
-                this.treeVisualizer.highlightOpenedNodes(openedNodes);
-                this.treeVisualizer.highlightClosedNodes(closedNodes);
+                this.treeVisualizer.highlightOpenedNodes(frontier);
+                this.treeVisualizer.highlightClosedNodes(visited);
             }
 
             if (this.graphBuilder && action === 'visit' && node !== this.startNode && !this.goalNodes.includes(node)) {
@@ -285,6 +309,251 @@ export class SearchController {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // ==================== Node List Updates ====================
+
+    static updateOpenedNodes(nodes, extra = {}) {
+        const safeNodes = Array.isArray(nodes) ? nodes : [];
+        const algorithm = this.searchResult?.algorithm || '';
+        const showCosts = this.shouldShowCosts(algorithm);
+
+        const closedNodes = this.searchResult?.steps?.[this.currentStepIndex]?.visited || [];
+        const closedNodeLabels = this.extractClosedNodeLabels(closedNodes);
+
+        // Debug logging
+        console.log('=== Opened Nodes Debug ===');
+        console.log('Raw frontier nodes:', safeNodes);
+        console.log('Closed node labels:', Array.from(closedNodeLabels));
+
+        const goalOccurrences = new Map();
+
+        const labels = safeNodes
+            .filter(n => {
+                const cleanLabel = this.getCleanLabel(this.extractNodeLabel(n));
+                const shouldKeep = !closedNodeLabels.has(cleanLabel);
+                console.log(`Node ${n}: cleanLabel=${cleanLabel}, shouldKeep=${shouldKeep}`);
+                return shouldKeep;
+            })
+            .map(n => {
+                const item = this.createOpenedNodeListItem(n, extra, algorithm, showCosts, goalOccurrences);
+                console.log(`Created list item for ${n}:`, item);
+                return item;
+            })
+            .join('');
+
+        console.log('Final opened list HTML:', labels);
+        console.log('=========================');
+
+        if (domRefs.openedListGraph) domRefs.openedListGraph.innerHTML = labels;
+        if (domRefs.openedListTree) domRefs.openedListTree.innerHTML = labels;
+    }
+
+    static updateClosedNodes(nodes, extra = {}) {
+        const algorithm = this.searchResult?.algorithm || '';
+        const showCosts = this.shouldShowCosts(algorithm);
+
+        const nodeDataMap = this.buildNodeDataMap(nodes, extra, showCosts);
+        const goalOccurrences = new Map();
+
+        const labels = Array.from(nodeDataMap.values())
+            .map(data => this.createClosedNodeListItem(data, extra, algorithm, showCosts, goalOccurrences))
+            .join('');
+
+        if (domRefs.closedListGraph) domRefs.closedListGraph.innerHTML = labels;
+        if (domRefs.closedListTree) domRefs.closedListTree.innerHTML = labels;
+    }
+
+    // ==================== Helper Methods ====================
+
+    static shouldShowCosts(algorithm) {
+        return ['UniformCostSearch', 'dijkstra', 'AStarSearch', 'GreedyBestFirstSearch'].includes(algorithm);
+    }
+
+    static extractClosedNodeLabels(closedNodes) {
+        const closedNodeLabels = new Set();
+        closedNodes.forEach(nodeId => {
+            const label = this.extractNodeLabel(nodeId);
+            const cleanLabel = this.getCleanLabel(label);
+            closedNodeLabels.add(cleanLabel);
+        });
+        return closedNodeLabels;
+    }
+
+    static buildNodeDataMap(nodes, extra, showCosts) {
+        const nodeDataMap = new Map();
+
+        nodes.forEach(n => {
+            const nodeLabel = this.extractNodeLabel(n);
+            const cleanLabel = this.getCleanLabel(nodeLabel);
+            const cost = this.extractNodeCost(n, nodeLabel, cleanLabel, extra, showCosts);
+
+            const existingData = nodeDataMap.get(cleanLabel);
+            if (!existingData || (cost !== undefined && cost < existingData.cost)) {
+                nodeDataMap.set(cleanLabel, {
+                    nodeId: n,
+                    nodeLabel,
+                    cleanLabel,
+                    cost
+                });
+            }
+        });
+
+        return nodeDataMap;
+    }
+
+    static extractNodeCost(nodeId, nodeLabel, cleanLabel, extra, showCosts) {
+        if (!showCosts || !extra.costs) return undefined;
+
+        let cost = extra.costs[nodeId];
+        if (cost === undefined) cost = extra.costs[nodeLabel];
+        if (cost === undefined) cost = extra.costs[cleanLabel];
+
+        if (cost === undefined && nodeId.includes('#') && this.searchResult?.steps) {
+            for (const step of this.searchResult.steps) {
+                if (step.frontier?.includes(nodeId) || step.visited?.includes(nodeId)) {
+                    cost = step.costs?.[cleanLabel] ?? step.path_cost?.[cleanLabel];
+                    if (cost !== undefined) break;
+                }
+            }
+        }
+
+        return cost;
+    }
+
+    static createOpenedNodeListItem(nodeId, extra, algorithm, showCosts, goalOccurrences) {
+        const nodeLabel = this.extractNodeLabel(nodeId);
+        const cleanLabel = this.getCleanLabel(nodeLabel);
+        const cost = this.extractNodeCost(nodeId, nodeLabel, cleanLabel, extra, showCosts);
+
+        // Get display label for goal nodes (with sequence numbering)
+        // const displayLabel = this.goalNodes?.includes(cleanLabel)
+        //     ? this.getSequencedLabel(nodeId, cleanLabel, goalOccurrences)
+        //     : cleanLabel;
+
+        if (!showCosts || cost === undefined) {
+            return `<li>${cleanLabel}</li>`;
+        }
+
+        // Display label with cost in a separate colored box below
+        return `<li style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span>${cleanLabel}</span>
+            <span style="background: #ff6b35; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; font-weight: bold; min-width: 20px; text-align: center;">${cost}</span>
+        </li>`;
+    }
+
+    static createClosedNodeListItem(data, extra, algorithm, showCosts, goalOccurrences) {
+        // Get display label for goal nodes (with sequence numbering)
+        // const displayLabel = this.goalNodes?.includes(data.cleanLabel)
+        //     ? this.getSequencedLabel(data.nodeId, data.cleanLabel, goalOccurrences)
+        //     : data.cleanLabel;
+
+        if (!showCosts || data.cost === undefined) {
+            return `<li>${data.cleanLabel}</li>`;
+        }
+
+        // Display label with cost in a separate colored box below
+        return `<li style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span>${data.cleanLabel}</span>
+            <span style="background: #d9534f; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; font-weight: bold; min-width: 20px; text-align: center;">${data.cost}</span>
+        </li>`;
+    }
+
+    static getSequencedLabel(nodeId, cleanLabel, goalOccurrences) {
+        if (!this.goalNodes?.includes(cleanLabel)) {
+            return cleanLabel;
+        }
+
+        const match = nodeId.match(/#([A-Z]+\d+)-/);
+        if (match) {
+            return match[1];
+        }
+
+        if (!goalOccurrences.has(cleanLabel)) {
+            goalOccurrences.set(cleanLabel, 0);
+        }
+        const count = goalOccurrences.get(cleanLabel) + 1;
+        goalOccurrences.set(cleanLabel, count);
+        return `${cleanLabel}${count}`;
+    }
+
+    static extractNodeLabel(nodeId) {
+        if (nodeId.includes('#')) {
+            const parts = nodeId.split('#')[1].split('-');
+            return parts[0];
+        }
+        return nodeId.split('-')[0];
+    }
+
+    static getCleanLabel(label) {
+        return label.replace(' (loop)', '');
+    }
+
+    // ==================== Reset & Clear Methods ====================
+
+    static resetVisualization() {
+        this.currentStepIndex = 0;
+        this.resetVisualizationState();
+        this.clearResults();
+        this.clearNodeLists();
+
+        if (this.graphBuilder) {
+            this.graphBuilder.buildGraph(this.currentGraphData, this.startNode, this.goalNodes);
+        }
+
+        if (this.treeVisualizer) {
+            const maxDepth = parseInt(domRefs.treeDepthInput?.value || '4');
+            const options = {
+                weights: this.currentGraphData.weights || {},
+                heuristic: this.currentGraphData.heuristic || {}
+            };
+            this.treeVisualizer.buildTree(this.currentGraphData, this.startNode, maxDepth, this.goalNodes, options);
+        }
+
+        const stepCounter = document.getElementById('step-counter');
+        if (stepCounter && this.searchResult) {
+            stepCounter.textContent = `Step 0 / ${this.searchResult.steps.length}`;
+        }
+    }
+
+    static resetVisualizationState() {
+        if (this.graphBuilder?.svg) {
+            this.resetGraphNodes();
+            this.resetGraphEdges();
+        }
+
+        if (this.treeVisualizer) {
+            this.resetTreeNodes();
+            this.treeVisualizer.resetEdgeHighlights();
+        }
+    }
+
+    static resetGraphNodes() {
+        const nodes = this.graphBuilder.svg.querySelectorAll('.node-circle');
+        nodes.forEach(node => {
+            const nodeLabel = node.parentElement.getAttribute('data-node');
+            let nodeClass = 'node-circle';
+
+            if (nodeLabel === this.startNode) {
+                nodeClass += ' start';
+            } else if (this.goalNodes.includes(nodeLabel)) {
+                nodeClass += ' goal';
+            }
+
+            node.setAttribute('class', nodeClass);
+        });
+    }
+
+    static resetGraphEdges() {
+        const edges = this.graphBuilder.svg.querySelectorAll('.edge-line');
+        edges.forEach(edge => edge.setAttribute('class', 'edge-line'));
+    }
+
+    static resetTreeNodes() {
+        if (this.treeVisualizer.svg) {
+            const treeNodes = this.treeVisualizer.svg.querySelectorAll('.tree-node');
+            treeNodes.forEach(node => node.setAttribute('class', 'tree-node'));
+        }
+    }
+
     static clearGraph() {
         this.graphBuilder?.clear();
         this.treeVisualizer?.clear();
@@ -309,31 +578,18 @@ export class SearchController {
     }
 
     static clearNodeLists() {
-        const lists = [domRefs.openedListGraph, domRefs.closedListGraph, domRefs.openedListTree, domRefs.closedListTree];
-        lists.forEach(list => { if (list) list.innerHTML = ''; });
+        const lists = [
+            domRefs.openedListGraph,
+            domRefs.closedListGraph,
+            domRefs.openedListTree,
+            domRefs.closedListTree
+        ];
+        lists.forEach(list => {
+            if (list) list.innerHTML = '';
+        });
     }
 
-    static extractNodeLabel(nodeId) {
-        if (nodeId.includes('#')) {
-            return nodeId.split('#')[1].split('-')[0];
-        }
-        return nodeId.split('-')[0];
-    }
-
-    static updateOpenedNodes(nodes) {
-        const safeNodes = Array.isArray(nodes) ? nodes : [];
-        const labels = safeNodes.map(n => `<li>${this.extractNodeLabel(n)}</li>`).join('');
-
-        if (domRefs.openedListGraph) domRefs.openedListGraph.innerHTML = labels;
-        if (domRefs.openedListTree) domRefs.openedListTree.innerHTML = labels;
-    }
-
-    static updateClosedNodes(nodes) {
-        const labels = nodes.map(n => `<li>${this.extractNodeLabel(n)}</li>`).join('');
-
-        if (domRefs.closedListGraph) domRefs.closedListGraph.innerHTML = labels;
-        if (domRefs.closedListTree) domRefs.closedListTree.innerHTML = labels;
-    }
+    // ==================== Display Methods ====================
 
     static displayResults(results) {
         const traversal = results.visited || results.traversal || [];
@@ -348,79 +604,29 @@ export class SearchController {
         }
 
         if (domRefs.statsList) {
-            const stats = [
+            domRefs.statsList.textContent = [
                 `Nodes Explored: ${traversal.length || 0}`,
                 `Path Length: ${path.length > 0 ? path.length - 1 : 0}`,
                 `Algorithm: ${results.algorithm || 'N/A'}`
             ].join(' | ');
-            domRefs.statsList.textContent = stats;
         }
     }
 
-    static resetVisualizationState() {
-        // Reset all graph nodes to default state
-        if (this.graphBuilder?.svg) {
-            const svg = this.graphBuilder.svg;
+    // ==================== Tree Visualization Controls ====================
 
-            // Reset all node circles to default
-            const nodes = svg.querySelectorAll('.node-circle');
-            nodes.forEach(node => {
-                const nodeLabel = node.parentElement.getAttribute('data-node');
-
-                // Check if it's start or goal node
-                if (nodeLabel === this.startNode) {
-                    node.setAttribute('class', 'node-circle start');
-                } else if (this.goalNodes.includes(nodeLabel)) {
-                    node.setAttribute('class', 'node-circle goal');
-                } else {
-                    node.setAttribute('class', 'node-circle');
-                }
-            });
-
-            // Reset all edges to default
-            const edges = svg.querySelectorAll('.edge-line');
-            edges.forEach(edge => {
-                edge.setAttribute('class', 'edge-line');
-            });
-        }
-
-        // Reset all tree nodes to default state
-        if (this.treeVisualizer?.svg) {
-            const treeSvg = this.treeVisualizer.svg;
-
-            // Reset all tree nodes
-            const treeNodes = treeSvg.querySelectorAll('.tree-node');
-            treeNodes.forEach(node => {
-                node.setAttribute('class', 'tree-node');
-            });
-
-            // Reset all tree links
-            const treeLinks = treeSvg.querySelectorAll('.tree-link');
-            treeLinks.forEach(link => {
-                link.setAttribute('class', 'tree-link');
-            });
-        }
-    }
-
-    // Toggle tree weights visibility
     static toggleTreeWeights(show) {
         if (this.treeVisualizer) {
             this.treeVisualizer.toggleWeights(show);
         }
     }
 
-    // Toggle tree heuristics visibility
     static toggleTreeHeuristics(show) {
         if (this.treeVisualizer) {
             this.treeVisualizer.toggleHeuristics(show);
         }
     }
 
-    // Get tree HTML for opening in new window
     static getTreeHTML() {
-        if (this.treeVisualizer) {
-            return this.treeVisualizer.getTreeHTML();
-        }
-        return null;
+        return this.treeVisualizer?.getTreeHTML() || null;
     }
 }

@@ -30,6 +30,7 @@ export class TreeVisualizer {
         };
         this.showWeights = true;
         this.showHeuristics = true;
+        this.goalNodeCounter = new Map(); // Track occurrences of goal nodes
     }
 
     buildTree(graphData, startNode, maxDepth = 4, goalNodes = [], options = {}) {
@@ -42,6 +43,7 @@ export class TreeVisualizer {
         this.goalNodes = goalNodes;
         this.showWeights = options.showWeights !== undefined ? options.showWeights : true;
         this.showHeuristics = options.showHeuristics !== undefined ? options.showHeuristics : true;
+        this.goalNodeCounter.clear(); // Reset counter for new tree
 
         this.treeData = this.generateSearchTree(graphData.graph, startNode, maxDepth, goalNodes);
         const {width, height} = this.calculateTreeDimensions(this.treeData, maxDepth);
@@ -273,17 +275,33 @@ export class TreeVisualizer {
 
         // Determine initial node class based on whether it's start or goal
         let nodeClass = 'tree-node';
-        if (node.label === this.startNode) {
-            nodeClass = 'tree-node start';
-        } else if (this.goalNodes && this.goalNodes.includes(node.label)) {
+        let displayLabel = node.label;
+
+        // Check if this is a goal node and add sequence number
+        const cleanLabel = node.label.replace(' (loop)', '');
+        if (this.goalNodes && this.goalNodes.includes(cleanLabel)) {
             nodeClass = 'tree-node goal';
+
+            // Increment counter for this goal node
+            if (!this.goalNodeCounter.has(cleanLabel)) {
+                this.goalNodeCounter.set(cleanLabel, 0);
+            }
+            const count = this.goalNodeCounter.get(cleanLabel) + 1;
+            this.goalNodeCounter.set(cleanLabel, count);
+
+            // Add sequence number to the display label
+            displayLabel = node.label.includes(' (loop)')
+                ? `${cleanLabel}${count} (loop)`
+                : `${cleanLabel}${count}`;
+        } else if (node.label === this.startNode) {
+            nodeClass = 'tree-node start';
         }
 
         const nodeGroup = SVGRenderer.drawTreeNode(
             this.svg,
             pos.x,
             pos.y,
-            node.label,
+            displayLabel,
             nodeInfo,
             nodeClass
         );
@@ -404,7 +422,7 @@ export class TreeVisualizer {
                 Math.abs(y2 - pos2.y + 20) < tolerance;
 
             if (connects) {
-                link.setAttribute('class', 'edge-line path');
+                link.setAttribute('class', 'tree-link path');
             }
         });
     }
@@ -437,6 +455,21 @@ export class TreeVisualizer {
         if (this.svg) SVGRenderer.clearSVG(this.svg);
         this.container.innerHTML = '';
         this.nodePositions.clear();
+    }
+
+    // Reset all tree edge highlights to default
+    resetEdgeHighlights() {
+        if (!this.svg) return;
+
+        // Reset all tree links to default
+        this.svg.querySelectorAll('line.tree-link').forEach(link => {
+            link.setAttribute('class', 'tree-link');
+        });
+
+        // Also reset any edge-line paths (in case they were highlighted)
+        this.svg.querySelectorAll('line.edge-line').forEach(link => {
+            link.setAttribute('class', 'edge-line');
+        });
     }
 
     // Toggle visibility of weights on edges

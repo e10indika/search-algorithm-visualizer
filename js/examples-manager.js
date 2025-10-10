@@ -19,7 +19,7 @@ export class ExamplesManager {
                 'A,C': 4, 'C,A': 4,
                 'B,D': 2, 'D,B': 2,
                 'B,E': 5, 'E,B': 5,
-                'C,F': 3, 'F,C': 3,
+                'C,F': 5, 'F,C': 3,
                 'E,F': 1, 'F,E': 1
             },
             heuristic: {

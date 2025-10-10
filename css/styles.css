@@ -208,6 +208,7 @@ header p {
 
 .input-col textarea,
 .input-col input[type="text"],
+.input-col input[type="number"],
 .input-col select {
     width: 100%;
     padding: var(--spacing-sm);
@@ -332,6 +333,7 @@ header p {
     position: relative;
 }
 
+.graph-container,
 .tree-container {
     min-height: 600px;
     height: 70vh;

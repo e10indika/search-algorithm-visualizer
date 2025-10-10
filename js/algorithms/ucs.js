@@ -38,6 +38,14 @@ export class UniformCostSearch extends BaseSearchAlgorithm {
             const [current, currentId, path, depth] = pq.pop();
             const currentCost = costs[current];
 
+            // Skip if we've already visited this node with a better cost
+            if (visitedSet.has(current)) {
+                continue;
+            }
+
+            // Mark as visited now
+            visitedSet.add(current);
+
             // Move current from opened to closed
             const openedIndex = openedIds.indexOf(currentId);
             if (openedIndex !== -1) {
@@ -47,57 +55,16 @@ export class UniformCostSearch extends BaseSearchAlgorithm {
                 closedIds.push(currentId);
             }
 
-            // Add current to visited if not already there
+            // Add current to visited list if not already there
             if (!visited.includes(current)) {
                 visited.push(current);
             }
 
-            // Explore neighbors at depth + 1
-            const neighborDepth = depth + 1;
-            const neighbors = this.graph[current] || [];
-
-            for (const neighbor of neighbors) {
-                if (!visitedSet.has(neighbor)) {
-                    const weight = weights[`${current},${neighbor}`] || weights[`${neighbor},${current}`] || 1;
-                    const newCost = currentCost + weight;
-
-                    if (!(neighbor in costs) || newCost < costs[neighbor]) {
-                        costs[neighbor] = newCost;
-                        visitedSet.add(neighbor);
-                        parent[neighbor] = current;
-                        treeEdges.push([current, neighbor]);
-
-                        // Generate node ID with path format: parentPath#node-depth
-                        const pathStr = path.join('');
-                        const neighborId = `${pathStr}#${neighbor}-${neighborDepth}`;
-                        pq.push(newCost, [neighbor, neighborId, [...path, neighbor], neighborDepth]);
-
-                        // Add to opened list
-                        openedIds.push(neighborId);
-                    }
-                }
-            }
-
-            // Update frontier to reflect current queue
-            const frontierNodeIds = [...openedIds];
-
-            // Record step with node IDs
-            steps.push(new SearchStep({
-                stepNumber,
-                currentNode: current,
-                action: 'visit',
-                pathSoFar: [...path],
-                visited: [...closedIds],
-                frontier: frontierNodeIds,
-                parent: { ...parent },
-                treeEdges: treeEdges.map(e => [...e]),
-                costs: { ...costs },
-                current_cost: currentCost
-            }));
-            stepNumber++;
-
-            // Check if goal found
+            // Check if goal found (check AFTER marking as visited)
             if (current === goal) {
+                // Update frontier before recording final step
+                const frontierNodeIds = [...openedIds];
+
                 steps.push(new SearchStep({
                     stepNumber,
                     currentNode: current,
@@ -122,6 +89,59 @@ export class UniformCostSearch extends BaseSearchAlgorithm {
                     steps
                 });
             }
+
+            // Explore neighbors at depth + 1
+            const neighborDepth = depth + 1;
+            const neighbors = this.graph[current] || [];
+
+            for (const neighbor of neighbors) {
+                const weight = weights[`${current},${neighbor}`] || weights[`${neighbor},${current}`] || 1;
+                const newCost = currentCost + weight;
+
+                // Add to queue if not visited OR if we found a cheaper path
+                if (!visitedSet.has(neighbor) && (!(neighbor in costs) || newCost < costs[neighbor])) {
+                    costs[neighbor] = newCost;
+                    parent[neighbor] = current;
+
+                    // Only add tree edge if this is a new or better path
+                    const existingEdge = treeEdges.findIndex(e => e[1] === neighbor);
+                    if (existingEdge !== -1) {
+                        treeEdges[existingEdge] = [current, neighbor];
+                    } else {
+                        treeEdges.push([current, neighbor]);
+                    }
+
+                    // Generate node ID with path format: parentPath#node-depth
+                    const pathStr = path.join('');
+                    const neighborId = `${pathStr}#${neighbor}-${neighborDepth}`;
+
+                    // Store cost with BOTH the node label and the full node ID
+                    costs[neighborId] = newCost;
+
+                    pq.push(newCost, [neighbor, neighborId, [...path, neighbor], neighborDepth]);
+
+                    // Add to opened list
+                    openedIds.push(neighborId);
+                }
+            }
+
+            // Update frontier to reflect current queue
+            const frontierNodeIds = [...openedIds];
+
+            // Record step with node IDs
+            steps.push(new SearchStep({
+                stepNumber,
+                currentNode: current,
+                action: 'visit',
+                pathSoFar: [...path],
+                visited: [...closedIds],
+                frontier: frontierNodeIds,
+                parent: { ...parent },
+                treeEdges: treeEdges.map(e => [...e]),
+                costs: { ...costs },
+                current_cost: currentCost
+            }));
+            stepNumber++;
         }
 
         // Goal not found

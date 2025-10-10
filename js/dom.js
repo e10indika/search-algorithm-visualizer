@@ -88,6 +88,8 @@ export const domRefs = {
     visualizationModeSelect: document.getElementById('visualization-mode'),
     animationSpeedSelect: document.getElementById('animation-speed'),
     treeDepthInput: document.getElementById('tree-depth'),
+    limitDepthInput: document.getElementById('limit-depth'),
+    depthControlGroup: document.getElementById('depth-control-group'),
     speedControlGroup: document.getElementById('speed-control-group'),
 
     // Results

@@ -21,14 +21,15 @@ export class APIService {
      */
     static async searchGraph(requestData) {
         try {
-            const { algorithm, graph, start, goal, weights, heuristic } = requestData;
+            const { algorithm, graph, start, goal, weights, heuristic, maxDepth } = requestData;
 
             console.log('🔍 Executing search locally:', { algorithm, start, goal });
 
             // Execute the algorithm locally using JavaScript implementation
             const result = SearchAlgorithms.search(algorithm, graph, start, goal, {
                 weights: weights || {},
-                heuristic: heuristic || {}
+                heuristic: heuristic || {},
+                maxDepth: maxDepth || undefined
             });
 
             console.log('✅ Search completed locally:', result);

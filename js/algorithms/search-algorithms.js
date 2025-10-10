@@ -4,13 +4,13 @@
  * Replaces the backend API
  */
 
-import { BreadthFirstSearch } from './bfs.js';
-import { DepthFirstSearch } from './dfs.js';
-import { DijkstraSearch } from './dijkstra.js';
-import { AStarSearch } from './astar.js';
-import { GreedyBestFirstSearch } from './greedy.js';
-import { UniformCostSearch } from './ucs.js';
-import { IterativeDeepeningSearch } from './ids.js';
+import {BreadthFirstSearch} from './bfs.js';
+import {DepthFirstSearch} from './dfs.js';
+import {DijkstraSearch} from './dijkstra.js';
+import {AStarSearch} from './astar.js';
+import {GreedyBestFirstSearch} from './greedy.js';
+import {UniformCostSearch} from './ucs.js';
+import {IterativeDeepeningSearch} from './ids.js';
 
 export class SearchAlgorithms {
     /**
@@ -30,6 +30,9 @@ export class SearchAlgorithms {
                 searchAlgorithm = new BreadthFirstSearch(graph);
                 break;
             case 'dfs':
+                searchAlgorithm = new DepthFirstSearch(graph);
+                break;
+            case 'limited-dfs':
                 searchAlgorithm = new DepthFirstSearch(graph);
                 break;
             case 'dijkstra':
@@ -67,27 +70,27 @@ export class SearchAlgorithms {
     }
 
     static dfs(graph, start, goal, maxDepth = null) {
-        const options = maxDepth !== null ? { maxDepth } : {};
+        const options = maxDepth !== null ? {maxDepth} : {};
         return this.search('dfs', graph, start, goal, options);
     }
 
     static dijkstra(graph, start, goal, weights = {}) {
-        return this.search('dijkstra', graph, start, goal, { weights });
+        return this.search('dijkstra', graph, start, goal, {weights});
     }
 
     static astar(graph, start, goal, weights = {}, heuristic = {}) {
-        return this.search('astar', graph, start, goal, { weights, heuristic });
+        return this.search('astar', graph, start, goal, {weights, heuristic});
     }
 
     static greedy(graph, start, goal, heuristic = {}) {
-        return this.search('greedy', graph, start, goal, { heuristic });
+        return this.search('greedy', graph, start, goal, {heuristic});
     }
 
     static ucs(graph, start, goal, weights = {}) {
-        return this.search('ucs', graph, start, goal, { weights });
+        return this.search('ucs', graph, start, goal, {weights});
     }
 
     static ids(graph, start, goal, maxDepth = 10) {
-        return this.search('ids', graph, start, goal, { maxDepth });
+        return this.search('ids', graph, start, goal, {maxDepth});
     }
 }
