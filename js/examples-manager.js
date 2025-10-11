@@ -41,7 +41,7 @@ export class ExamplesManager {
                 'G': 4,
                 'H': 2,
                 'I': 1,
-                'J': 0
+                'J': 2
             },
             start: 'A',
             goal: 'J',
