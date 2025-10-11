@@ -18,17 +18,17 @@
         <div class="input-row" style="justify-content: center; margin-bottom: 20px;">
             <div class="input-mode-toggle">
                 <label>
-                    <input type="radio" name="input-mode" value="custom" checked>
-                    <span>Custom Graph</span>
+                    <input type="radio" name="input-mode" value="predefined" checked>
+                    <span>Predefined Example</span>
                 </label>
                 <label>
-                    <input type="radio" name="input-mode" value="predefined">
-                    <span>Predefined Example</span>
+                    <input type="radio" name="input-mode" value="custom">
+                    <span>Custom Graph</span>
                 </label>
             </div>
         </div>
         <div class="input-row" id="input-fields-container">
-            <div class="input-col" id="custom-graph-col">
+            <div class="input-col hidden" id="custom-graph-col">
                 <h3>Graph Definition</h3>
                 <label for="graph-input">Adjacency List (JSON):</label>
                 <textarea id="graph-input" rows="6" placeholder='{"A": ["B", "C"], "B": ["A", "D"], "C": ["A", "F"], "D": ["B"], "E": ["B", "F"], "F": ["C", "E"]}'></textarea>
@@ -37,7 +37,7 @@
                 <label for="heuristic-input">Heuristics (JSON, optional):</label>
                 <textarea id="heuristic-input" rows="3" placeholder='{"A": 5, "B": 4, "C": 3, "D": 2, "E": 2, "F": 0}'></textarea>
             </div>
-            <div class="input-col hidden" id="predefined-graph-col">
+            <div class="input-col" id="predefined-graph-col">
                 <h3>Predefined Examples</h3>
                 <label for="example-graph">Select Example:</label>
                 <select id="example-graph">
@@ -48,8 +48,16 @@
                     <option value="tree">Tree Structure (10 nodes)</option>
                 </select>
                 <div id="example-preview" class="hidden">
-                    <h4 style="color: #667eea; margin-bottom: 10px;">📋 Preview:</h4>
-                    <pre id="example-preview-content" style="font-size: 0.85em; overflow: auto; max-height: 300px; background: white; padding: 10px; border-radius: 5px;"></pre>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="color: #667eea; margin: 0;">📋 Preview:</h4>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="edit-example-btn" class="btn btn-secondary" style="padding: 5px 15px; font-size: 0.85em;">✏️ Edit</button>
+                            <button id="save-example-btn" class="btn btn-primary hidden" style="padding: 5px 15px; font-size: 0.85em;">💾 Save</button>
+                            <button id="cancel-edit-btn" class="btn btn-secondary hidden" style="padding: 5px 15px; font-size: 0.85em;">❌ Cancel</button>
+                        </div>
+                    </div>
+                    <pre id="example-preview-content" contenteditable="false" style="font-size: 0.85em; overflow: auto; max-height: 300px; background: white; padding: 10px; border-radius: 5px; outline: none;"></pre>
+                    <div id="edit-error-message" class="hidden" style="color: #d32f2f; background: #ffebee; padding: 8px; border-radius: 5px; margin-top: 10px; font-size: 0.85em;"></div>
                 </div>
             </div>
             <div class="input-col">

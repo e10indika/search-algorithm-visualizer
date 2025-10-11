@@ -20,6 +20,7 @@ class App {
         this.setupButtons();
         this.setupVisualizationMode();
         this.setupAlgorithmSelection();
+        this.setupExampleEditing();
     }
 
     static setupInputModeToggle() {
@@ -80,6 +81,105 @@ class App {
             }
         });
         domRefs.depthControlGroup?.classList.add('hidden');
+    }
+
+    static setupExampleEditing() {
+        const editBtn = document.getElementById('edit-example-btn');
+        const saveBtn = document.getElementById('save-example-btn');
+        const cancelBtn = document.getElementById('cancel-edit-btn');
+        const previewContent = document.getElementById('example-preview-content');
+        const errorMessage = document.getElementById('edit-error-message');
+
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                previewContent.contentEditable = 'true';
+                previewContent.style.background = '#fffef0';
+                previewContent.style.border = '2px solid #667eea';
+                editBtn.classList.add('hidden');
+                saveBtn.classList.remove('hidden');
+                cancelBtn.classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+                errorMessage.textContent = '';
+            });
+        }
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                const exampleName = domRefs.exampleGraphSelect?.value;
+                if (!exampleName) return;
+
+                try {
+                    const editedData = JSON.parse(previewContent.textContent);
+
+                    // Validate the edited data
+                    if (!editedData.graph || typeof editedData.graph !== 'object') {
+                        throw new Error('Invalid graph structure. Must have a "graph" property.');
+                    }
+
+                    // Save the edited example
+                    ExamplesManager.saveEditedExample(exampleName, editedData);
+
+                    // Update the preview display
+                    previewContent.textContent = JSON.stringify(editedData, null, 2);
+
+                    // Update form fields with new values
+                    if (editedData.start && domRefs.graphStart) {
+                        domRefs.graphStart.value = editedData.start;
+                    }
+                    if (editedData.goal && domRefs.graphGoal) {
+                        domRefs.graphGoal.value = Array.isArray(editedData.goal) ? editedData.goal.join(',') : editedData.goal;
+                    }
+                    if (editedData.treeDepth && domRefs.treeDepthInput) {
+                        domRefs.treeDepthInput.value = editedData.treeDepth;
+                    }
+
+                    // Exit edit mode
+                    previewContent.contentEditable = 'false';
+                    previewContent.style.background = 'white';
+                    previewContent.style.border = 'none';
+                    editBtn.classList.remove('hidden');
+                    saveBtn.classList.add('hidden');
+                    cancelBtn.classList.add('hidden');
+                    errorMessage.classList.add('hidden');
+                    errorMessage.textContent = '';
+
+                    // Show success message briefly
+                    const tempSuccess = document.createElement('div');
+                    tempSuccess.textContent = '✓ Changes saved successfully!';
+                    tempSuccess.style.cssText = 'color: #2e7d32; background: #e8f5e9; padding: 8px; border-radius: 5px; margin-top: 10px; font-size: 0.85em;';
+                    previewContent.parentElement.appendChild(tempSuccess);
+                    setTimeout(() => tempSuccess.remove(), 3000);
+
+                } catch (e) {
+                    errorMessage.textContent = '❌ Error: ' + e.message + '. Please check your JSON syntax.';
+                    errorMessage.classList.remove('hidden');
+                    console.error('Error saving edited example:', e);
+                }
+            });
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                const exampleName = domRefs.exampleGraphSelect?.value;
+                if (!exampleName) return;
+
+                // Reload the original (or previously saved) example
+                const example = ExamplesManager.getExample(exampleName);
+                if (example) {
+                    previewContent.textContent = JSON.stringify(example, null, 2);
+                }
+
+                // Exit edit mode
+                previewContent.contentEditable = 'false';
+                previewContent.style.background = 'white';
+                previewContent.style.border = 'none';
+                editBtn.classList.remove('hidden');
+                saveBtn.classList.add('hidden');
+                cancelBtn.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                errorMessage.textContent = '';
+            });
+        }
     }
 
     static handleInputModeChange(mode) {
@@ -178,4 +278,3 @@ if (document.readyState === 'loading') {
 } else {
     App.initialize();
 }
-

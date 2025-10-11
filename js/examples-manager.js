@@ -157,13 +157,32 @@ export class ExamplesManager {
         }
     };
 
+    static editedExamples = {}; // Store edited versions
+
     static async loadExamples() {
         return this.examples;
     }
 
     static getExample(name) {
+        // Check if there's an edited version first
+        if (this.editedExamples[name]) {
+            return JSON.parse(JSON.stringify(this.editedExamples[name]));
+        }
+
         const example = this.examples[name];
         if (!example) return null;
         return JSON.parse(JSON.stringify(example));
+    }
+
+    static saveEditedExample(name, editedData) {
+        this.editedExamples[name] = JSON.parse(JSON.stringify(editedData));
+    }
+
+    static resetExample(name) {
+        delete this.editedExamples[name];
+    }
+
+    static hasBeenEdited(name) {
+        return !!this.editedExamples[name];
     }
 }
