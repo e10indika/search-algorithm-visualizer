@@ -11,11 +11,12 @@ import {AStarSearch} from './astar.js';
 import {GreedyBestFirstSearch} from './greedy.js';
 import {UniformCostSearch} from './ucs.js';
 import {IterativeDeepeningSearch} from './ids.js';
+import {BidirectionalSearch} from './bds.js';
 
 export class SearchAlgorithms {
     /**
      * Execute a search algorithm
-     * @param {string} algorithm - Algorithm name (bfs, dfs, dijkstra, astar, greedy, ucs, ids)
+     * @param {string} algorithm - Algorithm name (bfs, dfs, dijkstra, astar, greedy, ucs, ids, bds)
      * @param {object} graph - Graph adjacency list
      * @param {string} start - Start node
      * @param {string} goal - Goal node
@@ -53,6 +54,10 @@ export class SearchAlgorithms {
             case 'ids':
             case 'iterative_deepening':
                 searchAlgorithm = new IterativeDeepeningSearch(graph);
+                break;
+            case 'bds':
+            case 'bidirectional':
+                searchAlgorithm = new BidirectionalSearch(graph);
                 break;
             default:
                 throw new Error(`Unknown algorithm: ${algorithm}`);
@@ -92,5 +97,9 @@ export class SearchAlgorithms {
 
     static ids(graph, start, goal, maxDepth = 10) {
         return this.search('ids', graph, start, goal, {maxDepth});
+    }
+
+    static bds(graph, start, goal) {
+        return this.search('bds', graph, start, goal);
     }
 }

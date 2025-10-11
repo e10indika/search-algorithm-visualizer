@@ -62,9 +62,7 @@ export class SearchController {
     }
 
     static renderGraphVisualization(graphData) {
-        if (!this.graphBuilder) {
-            this.graphBuilder = new GraphBuilder(domRefs.graphContainer);
-        }
+        this.graphBuilder = new GraphBuilder(domRefs.graphContainer);
         this.graphBuilder.buildGraph(graphData, this.startNode, this.goalNodes);
     }
 
@@ -245,6 +243,12 @@ export class SearchController {
         if (this.treeVisualizer) {
             this.treeVisualizer.highlightOpenedNodes(frontier);
             this.treeVisualizer.highlightClosedNodes(visited);
+
+            // Highlight backward search nodes if available (for BDS)
+            // backwardLabels is spread at the top level after toDict()
+            if (step.backwardLabels) {
+                this.highlightBackwardNodes(step.backwardLabels);
+            }
         }
 
         if (this.shouldUpdateNodeVisual(node, action)) {
@@ -253,7 +257,7 @@ export class SearchController {
 
         this.updateStepCounter(stepIndex);
 
-        if (action === 'goal_found') {
+        if (action === 'goal_found' || action === 'meeting_found') {
             this.highlightGoalPath();
         }
     }
@@ -286,6 +290,32 @@ export class SearchController {
         this.treeVisualizer?.highlightPath(path);
     }
 
+    static highlightBackwardNodes(backwardLabels) {
+        if (!this.treeVisualizer?.svg || !Array.isArray(backwardLabels)) return;
+        console.log('Highlighting backward search nodes:', backwardLabels);
+
+        // Find all tree nodes that match the backward search labels
+        backwardLabels.forEach(label => {
+            // Find all nodes in the tree with this label
+            const matchingNodes = this.treeVisualizer.svg.querySelectorAll(`[data-node]`);
+            matchingNodes.forEach(nodeGroup => {
+                const nodeId = nodeGroup.getAttribute('data-node');
+                const nodeLabel = this.extractNodeLabel(nodeId);
+
+                if (nodeLabel === label || this.getCleanLabel(nodeLabel) === label) {
+                    const circle = nodeGroup.querySelector('circle');
+                    if (circle && !circle.classList.contains('path')) {
+                        // Add a special class for backward search nodes
+                        circle.classList.add('backward-search');
+                        // Apply a distinctive style - purple/blue border
+                        circle.style.stroke = '#9c27b0';
+                        circle.style.strokeWidth = '3px';
+                    }
+                }
+            });
+        });
+    }
+
     static async animateSearch(result, speed) {
         for (let i = 0; i < result.steps.length; i++) {
             const step = result.steps[i];
@@ -299,6 +329,12 @@ export class SearchController {
             if (this.treeVisualizer) {
                 this.treeVisualizer.highlightOpenedNodes(frontier);
                 this.treeVisualizer.highlightClosedNodes(visited);
+
+                // Highlight backward search nodes if available (for BDS)
+                // backwardLabels is spread at the top level after toDict()
+                if (step.backwardLabels) {
+                    this.highlightBackwardNodes(step.backwardLabels);
+                }
             }
 
             if (this.shouldUpdateNodeVisual(node, action)) {

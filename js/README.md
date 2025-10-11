@@ -16,7 +16,6 @@ This directory contains all the JavaScript modules for the Search Algorithms Vis
 - **`tree-visualizer.js`** - Builds and renders the search tree
 - **`svg-renderer.js`** - SVG rendering utilities
 - **`animation-controller.js`** - Controls animation timing
-- **`visualization-manager.js`** - Manages visualization state
 
 ### UI Modules
 - **`ui-builder.js`** - UI component builders
@@ -29,9 +28,12 @@ This directory contains all the JavaScript modules for the Search Algorithms Vis
 - **`base.js`** - Base classes (SearchStep, SearchResult, BaseSearchAlgorithm)
 - **`bfs.js`** - Breadth-First Search
 - **`dfs.js`** - Depth-First Search
+- **`ids.js`** - Iterative Deepening Search
+- **`ucs.js`** - Uniform Cost Search
 - **`dijkstra.js`** - Dijkstra's Algorithm + PriorityQueue
 - **`astar.js`** - A* Search
 - **`greedy.js`** - Greedy Best-First Search
+- **`bds.js`** - Bidirectional Search
 - **`search-algorithms.js`** - Algorithm factory/manager
 
 ## 🔄 Module Dependencies
@@ -42,9 +44,12 @@ main.js
 │   └── algorithms/search-algorithms.js
 │       ├── algorithms/bfs.js
 │       ├── algorithms/dfs.js
+│       ├── algorithms/ids.js
+│       ├── algorithms/ucs.js
 │       ├── algorithms/dijkstra.js
 │       ├── algorithms/astar.js
-│       └── algorithms/greedy.js
+│       ├── algorithms/greedy.js
+│       └── algorithms/bds.js
 ├── search-controller.js
 │   ├── graph-builder.js
 │   ├── tree-visualizer.js
@@ -86,4 +91,3 @@ export class MyNewAlgorithm extends BaseSearchAlgorithm {
 ## 🧪 Testing
 
 Use `standalone-test.html` in the root directory to test algorithms independently.
-
