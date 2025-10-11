@@ -331,7 +331,11 @@ export class TreeVisualizer {
             }
         });
 
-        // Calculate node information to display
+        // Get heuristic value for this node
+        const cleanLabel = node.label.replace(' (loop)', '');
+        const hValue = this.heuristic && cleanLabel in this.heuristic ? this.heuristic[cleanLabel] : null;
+
+        // Calculate node information to display (now empty)
         const nodeInfo = this.getNodeInfo(node);
 
         // Determine initial node class based on whether it's start or goal
@@ -339,7 +343,6 @@ export class TreeVisualizer {
         let displayLabel = node.label;
 
         // Check if this is a goal node and add sequence number
-        const cleanLabel = node.label.replace(' (loop)', '');
         if (this.goalNodes && this.goalNodes.includes(cleanLabel)) {
             nodeClass = 'tree-node goal';
 
@@ -358,13 +361,14 @@ export class TreeVisualizer {
             nodeClass = 'tree-node start';
         }
 
-        const nodeGroup = SVGRenderer.drawTreeNode(
+        const nodeGroup = SVGRenderer.drawTreeNodeWithHeuristic(
             this.svg,
             pos.x,
             pos.y,
             displayLabel,
             nodeInfo,
-            nodeClass
+            nodeClass,
+            hValue
         );
         nodeGroup.setAttribute('data-node', node.id);
 
@@ -383,41 +387,8 @@ export class TreeVisualizer {
     }
 
     getNodeInfo(node) {
-        const infoParts = [];
-
-        // Add depth
-        infoParts.push(`d:${node.depth}`);
-
-        // Calculate cumulative cost (g-value) from path if weights are available
-        let cumulativeCost = 0;
-        if (this.weights && Object.keys(this.weights).length > 0 && node.path.length > 1) {
-            for (let i = 0; i < node.path.length - 1; i++) {
-                const from = node.path[i];
-                const to = node.path[i + 1];
-                const weight = this.weights[`${from},${to}`] ||
-                    this.weights[`${to},${from}`] || 1;
-                cumulativeCost += weight;
-            }
-            infoParts.push(`g:${cumulativeCost}`);
-        } else if (this.costs && node.label in this.costs) {
-            // Fallback to costs object if available
-            cumulativeCost = this.costs[node.label];
-            infoParts.push(`g:${cumulativeCost}`);
-        }
-
-        // Add heuristic value if available
-        if (this.heuristic && node.label in this.heuristic) {
-            const hValue = this.heuristic[node.label];
-            infoParts.push(`h:${hValue}`);
-
-            // Add f value (g+h) if we have cumulative cost
-            if (cumulativeCost > 0 || node.depth === 0) {
-                const fValue = cumulativeCost + hValue;
-                infoParts.push(`f:${fValue}`);
-            }
-        }
-
-        return infoParts.join(' ');
+        // No longer displaying g, h, f values as separate info text
+        return '';
     }
 
     highlightOpenedNodes(openedList) {
@@ -577,40 +548,8 @@ export class TreeVisualizer {
 
     // Get filtered node info based on visibility settings
     getNodeInfoFiltered(node) {
-        const infoParts = [];
-
-        // Add depth
-        infoParts.push(`d:${node.depth}`);
-
-        // Calculate cumulative cost (g-value) from path if weights are available
-        let cumulativeCost = 0;
-        if (this.showWeights && this.weights && Object.keys(this.weights).length > 0 && node.path.length > 1) {
-            for (let i = 0; i < node.path.length - 1; i++) {
-                const from = node.path[i];
-                const to = node.path[i + 1];
-                const weight = this.weights[`${from},${to}`] ||
-                    this.weights[`${to},${from}`] || 1;
-                cumulativeCost += weight;
-            }
-            infoParts.push(`g:${cumulativeCost}`);
-        } else if (this.showWeights && this.costs && node.label in this.costs) {
-            cumulativeCost = this.costs[node.label];
-            infoParts.push(`g:${cumulativeCost}`);
-        }
-
-        // Add heuristic value if available and enabled
-        if (this.showHeuristics && this.heuristic && node.label in this.heuristic) {
-            const hValue = this.heuristic[node.label];
-            infoParts.push(`h:${hValue}`);
-
-            // Add f value (g+h) if we have cumulative cost
-            if (this.showWeights && (cumulativeCost > 0 || node.depth === 0)) {
-                const fValue = cumulativeCost + hValue;
-                infoParts.push(`f:${fValue}`);
-            }
-        }
-
-        return infoParts.join(' ');
+        // No longer displaying g, h, f values as separate info text
+        return '';
     }
 
     // Create a standalone version of the tree for opening in a new window

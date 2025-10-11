@@ -173,6 +173,72 @@ export class SVGRenderer {
     }
 
     /**
+     * Draw a tree node with heuristic value in the label
+     */
+    static drawTreeNodeWithHeuristic(svg, x, y, label, info = '', nodeClass = 'tree-node', heuristic = null, radius = 20) {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('data-node', label);
+
+        // Circle
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', radius);
+        circle.setAttribute('class', nodeClass);
+
+        group.appendChild(circle);
+
+        // Label with heuristic
+        if (heuristic !== null && heuristic !== undefined) {
+            // Main label (node name) - positioned higher to make room for heuristic
+            const mainLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            mainLabel.setAttribute('x', x);
+            mainLabel.setAttribute('y', y - 5);  // Moved up more to create gap
+            mainLabel.setAttribute('class', 'tree-label');
+            mainLabel.setAttribute('text-anchor', 'middle');
+            mainLabel.setAttribute('dominant-baseline', 'middle');
+            mainLabel.textContent = label;
+
+            // Heuristic value - with increased gap from node label
+            const heuristicLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            heuristicLabel.setAttribute('x', x);
+            heuristicLabel.setAttribute('y', y + 11);  // Increased gap (was y + 10)
+            heuristicLabel.setAttribute('class', 'tree-heuristic-label');
+            heuristicLabel.setAttribute('text-anchor', 'middle');
+            heuristicLabel.setAttribute('font-size', '13');
+            heuristicLabel.setAttribute('font-weight', 'bold');
+            heuristicLabel.setAttribute('fill', '#35038a');
+            heuristicLabel.textContent = `${heuristic}`;
+
+            group.appendChild(mainLabel);
+            group.appendChild(heuristicLabel);
+        } else {
+            // Label without heuristic
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', x);
+            text.setAttribute('y', y + 4);
+            text.setAttribute('class', 'tree-label');
+            text.textContent = label;
+            group.appendChild(text);
+        }
+
+        // Additional info (now empty but kept for compatibility)
+        if (info) {
+            const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            infoText.setAttribute('x', x);
+            infoText.setAttribute('y', y + radius + 15);
+            infoText.setAttribute('class', 'tree-label tree-info-text');
+            infoText.setAttribute('font-size', '10');
+            infoText.setAttribute('fill', '#666');
+            infoText.textContent = info;
+            group.appendChild(infoText);
+        }
+
+        svg.appendChild(group);
+        return group;
+    }
+
+    /**
      * Draw a tree link (parent to child) with optional weight
      */
     static drawTreeLink(svg, x1, y1, x2, y2, weight = null, linkClass = 'tree-link') {
@@ -197,7 +263,7 @@ export class SVGRenderer {
             weightBg.setAttribute('cx', midX);
             weightBg.setAttribute('cy', midY);
             weightBg.setAttribute('r', '10');
-            weightBg.setAttribute('fill', 'white');
+            weightBg.setAttribute('fill', '#e0e0e0');  // Changed to grey
             weightBg.setAttribute('stroke', '#999');
             weightBg.setAttribute('stroke-width', '1');
 
