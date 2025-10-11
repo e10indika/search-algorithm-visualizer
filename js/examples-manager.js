@@ -5,6 +5,48 @@
 
 export class ExamplesManager {
     static examples = {
+        vacuum_cleaner: {
+            graph: {
+                'A': ['B', 'C'],
+                'B': ['A', 'E'],
+                'C': ['A', 'F', 'G'],
+                'D': ['E', 'F'],
+                'E': ['B', 'D'],
+                'F': ['C', 'D', 'G', 'I'],
+                'G': ['C', 'F', 'H'],
+                'H': ['G', 'I'],
+                'I': ['F', 'H', 'J'],
+                'J': ['I']
+            },
+            weights: {
+                'A,B': 1, 'B,A': 1,
+                'A,C': 4, 'C,A': 4,
+                'B,E': 2, 'E,B': 2,
+                'C,F': 5, 'F,C': 3,
+                'C,G': 1, 'G,C': 1,
+                'D,E': 3, 'E,D': 3,
+                'D,F': 2, 'F,D': 2,
+                'F,I': 3, 'I,F': 3,
+                'G,H': 2, 'H,G': 2,
+                'H,I': 1, 'I,H': 1,
+                'I,J': 5, 'J,I': 5
+            },
+            heuristic: {
+                'A': 7,
+                'B': 6,
+                'C': 6,
+                'D': 5,
+                'E': 4,
+                'F': 3,
+                'G': 4,
+                'H': 2,
+                'I': 1,
+                'J': 0
+            },
+            start: 'A',
+            goal: 'J',
+            treeDepth : 10
+        },
         simple: {
             graph: {
                 'A': ['B', 'C'],

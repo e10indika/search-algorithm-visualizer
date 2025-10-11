@@ -15,7 +15,7 @@ export class BidirectionalSearch extends BaseSearchAlgorithm {
      * @returns {SearchResult} Search result with path and exploration details
      */
     search(start, goal, options = {}) {
-        const { visited, visitedSet, parent, treeEdges } = this._initializeSearch(start);
+        const { visited, treeEdges } = this._initializeSearch(start);
 
         // Initialize forward search (from start)
         const startId = `${start}-0`;

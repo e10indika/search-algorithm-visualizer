@@ -108,6 +108,9 @@ class App {
         if (example.goal && domRefs.graphGoal) {
             domRefs.graphGoal.value = Array.isArray(example.goal) ? example.goal.join(',') : example.goal;
         }
+        if (example.treeDepth && domRefs.treeDepthInput) {
+            domRefs.treeDepthInput.value = example.treeDepth;
+        }
     }
 
     static handleDrawGraph() {
