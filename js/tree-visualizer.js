@@ -56,7 +56,68 @@ export class TreeVisualizer {
         this.calculateTreeLayout(this.treeData, width / 2, TreeVisualizer.CONSTANTS.VERTICAL_PADDING, width);
         this.drawTree(this.treeData);
 
+        // Adjust layout based on tree size
+        this.adjustLayoutForTreeSize(width, height);
+
         return this.svg;
+    }
+
+    adjustLayoutForTreeSize(width, height) {
+        const container = document.getElementById('visualization-container');
+        const graphCol = document.getElementById('graph-viz-col');
+        const treeCol = document.getElementById('tree-viz-col');
+        const graphContainer = document.getElementById('graph-container');
+        const treeContainer = document.getElementById('state-space-tree-container');
+
+        if (!container || !graphCol || !treeCol) return;
+
+        // Calculate if tree is "large"
+        // Large tree: width > 1200px OR height > 600px OR (width > 800 AND height > 400)
+        const isLargeTree = width > 1200 || height > 600 || (width > 800 && height > 400);
+
+        if (isLargeTree) {
+            // Stack vertically - tree below graph
+            container.style.flexDirection = 'column';
+            container.style.flexWrap = 'nowrap';
+            graphCol.style.width = '100%';
+            graphCol.style.minWidth = '100%';
+            graphCol.style.maxWidth = '100%';
+            graphCol.style.flex = 'none';
+            treeCol.style.width = '100%';
+            treeCol.style.minWidth = '100%';
+            treeCol.style.maxWidth = '100%';
+            treeCol.style.flex = 'none';
+
+            // Scroll tree into view smoothly
+            setTimeout(() => {
+                this.container.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }, 100);
+        } else {
+            // Side-by-side layout - properly reset all properties
+            container.style.flexDirection = 'row';
+            container.style.flexWrap = 'wrap';
+            graphCol.style.width = '';
+            graphCol.style.minWidth = '';
+            graphCol.style.maxWidth = '';
+            graphCol.style.flex = '1';
+            treeCol.style.width = '';
+            treeCol.style.minWidth = '';
+            treeCol.style.maxWidth = '';
+            treeCol.style.flex = '1';
+
+            // Clear the minWidth/minHeight set by syncVisualizationSizes
+            if (graphContainer) {
+                graphContainer.style.minWidth = '';
+                graphContainer.style.minHeight = '';
+            }
+            if (treeContainer) {
+                treeContainer.style.minWidth = '';
+                treeContainer.style.minHeight = '';
+            }
+        }
     }
 
     addZoomControls() {

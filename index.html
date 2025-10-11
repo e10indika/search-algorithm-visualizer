@@ -81,14 +81,14 @@
 
     <!-- Visualization Section -->
     <section id="visualization-section">
-        <div class="visualization-row">
-            <div class="visualization-col">
+        <div class="visualization-row" id="visualization-container">
+            <div class="visualization-col" id="graph-viz-col">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin-bottom: 0;">Graph Visualization</h3>
                 </div>
                 <div id="graph-container" class="viz-panel graph-container"></div>
             </div>
-            <div class="visualization-col">
+            <div class="visualization-col" id="tree-viz-col">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin-bottom: 0;">Search Tree</h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
@@ -112,23 +112,16 @@
                 <div id="state-space-tree-container" class="viz-panel tree-container"></div>
             </div>
         </div>
+
         <div class="visualization-row">
             <div class="visualization-col node-list">
                 <h4>Opened Nodes</h4>
-                    <ul id="opened-list-tree"></ul>
+                <ul id="opened-list-tree"></ul>
             </div>
             <div class="visualization-col node-list">
                 <h4>Closed Nodes</h4>
-                    <ul id="closed-list-tree"></ul>
+                <ul id="closed-list-tree"></ul>
             </div>
-<!--            <div id="opened-nodes-tree" class="node-list">-->
-<!--                    <h4>Opened Nodes</h4>-->
-<!--                    <ul id="opened-list-tree"></ul>-->
-<!--                </div>-->
-<!--                <div id="closed-nodes-tree" class="node-list">-->
-<!--                    <h4>Closed Nodes</h4>-->
-<!--                    <ul id="closed-list-tree"></ul>-->
-<!--                </div>-->
         </div>
     </section>
 

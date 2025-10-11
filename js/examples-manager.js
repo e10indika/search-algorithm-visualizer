@@ -73,7 +73,8 @@ export class ExamplesManager {
                 'F': 0
             },
             start: 'A',
-            goal: 'F'
+            goal: 'F',
+            treeDepth : 4
         },
         complex: {
             graph: {
@@ -119,7 +120,8 @@ export class ExamplesManager {
                 'J': 0
             },
             start: 'S',
-            goal: 'J'
+            goal: 'J',
+            treeDepth : 7
         },
         tree: {
             graph: {
@@ -150,7 +152,8 @@ export class ExamplesManager {
                 'E': 0, 'F': 0, 'G': 0, 'H': 0, 'I': 0, 'J': 0
             },
             start: 'A',
-            goal: 'E'
+            goal: 'E',
+            treeDepth : 4
         }
     };
 
